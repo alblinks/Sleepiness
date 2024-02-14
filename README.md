@@ -17,7 +17,11 @@ $ labelImg
 
 ## 2. Fine-tune the pre-trained model
 Now we are fine-tuning the parameters of the model using the labeled data from the first step as follows:
-1. Modify the ```dataset.yml``` in the ```yolov5``` folder to link correctly to your labels and images. Moreover, specify the desired classes correctly. For the binary case, we have either ```awake``` or ```sleepy```. 
+1. Clone the ```yolov5``` repo into this repo:
+```bash
+$ git clone https://github.com/ultralytics/yolov5
+```
+2. Modify the ```dataset.yml``` in the ```yolov5``` folder to link correctly to your labels and images. Moreover, specify the desired classes correctly. For the binary case, we have either ```awake``` or ```sleepy```. 
 2. Run the following command from inside the ```yolov5``` directory, where you can adjust the parameters as desired:
 ```bash
 $ python train.py --img 320 --batch 16 --epochs 300 --data dataset.yml --weights yolov5s.pt
@@ -25,9 +29,9 @@ $ python train.py --img 320 --batch 16 --epochs 300 --data dataset.yml --weights
 3. You can find the results in the folder ```yolov5/runs```.
 
 ## 3. Real-time detection
-Run ```realTimeDetection.py``` to see how it works! Make sure to change the path to the trained weights from the second step accordingly.
+Run ```realTimeDetection.py``` to see how it works! Make sure to change the path to the trained weights from the second step accordingly. The output should look like this:
 
-
+![Example Image](https://github.com/MarWaltz/Sleepiness/blob/main/exampleOutput.jpg)
 
 
 
