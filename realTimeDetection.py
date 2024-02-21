@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from empty_seat import is_empty
 
 # Load trained model
 model = torch.hub.load('ultralytics/yolov5', 'custom', path='yolov5/runs/train/exp2/weights/last.pt', force_reload=True)

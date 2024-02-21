@@ -1,0 +1,8 @@
+pictures/*
+
+# Python bytecode
+*.pyc
+*.pyo
+
+# Pickle files
+*.pkl
