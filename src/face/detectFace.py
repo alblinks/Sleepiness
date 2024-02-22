@@ -6,7 +6,7 @@ def load_face_model() -> YOLO:
     """Loads and returns the face model."""
 
     try:
-        face_model = YOLO("face/yolov8n-face.pt")
+        face_model = YOLO("yolov8n-face.pt")
     except:
         raise FileNotFoundError("Error: Could not load the face model. Check the paths.")
 

@@ -3,7 +3,7 @@ import random
 import shutil
 
 # Define the source directory containing subfolders of images
-source_directory = "/home/mwaltz/LGCS_Daten_Video_Teil1_gelabelt"
+source_directory = "/home/mwaltz/train"
 
 # Define the destination directory to save sampled images
 destination_directory = "/home/mwaltz/sampleImages"

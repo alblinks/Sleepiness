@@ -8,3 +8,6 @@ pictures/*
 
 # Pickle files
 *.pkl
+
+# Large weight files
+*.weights
