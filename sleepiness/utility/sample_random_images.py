@@ -6,10 +6,10 @@ import shutil
 source_directory = "/home/mwaltz/train"
 
 # Define the destination directory to save sampled images
-destination_directory = "/home/mwaltz/sampleImages"
+destination_directory = "/home/mwaltz/sampleImages/raw"
 
 # Define the number of images to sample
-num_images_to_sample = 100
+num_images_to_sample = 5000
 
 # Create the destination directory if it doesn't exist
 if not os.path.exists(destination_directory):
@@ -22,7 +22,7 @@ sampled_image_paths = []
 for root, dirs, files in os.walk(source_directory):
     for file in files:
         # Check if the file is an image (you may want to refine this check based on your image file extensions)
-        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+        if file.endswith('.jpg'):
             # Construct the path to the current image
             image_path = os.path.join(root, file)
             # Add the image path to the list

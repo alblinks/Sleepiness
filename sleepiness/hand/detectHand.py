@@ -8,7 +8,7 @@ def load_hand_model() -> HandYOLO:
     """Loads and returns the hand model."""
 
     try:
-        hand_model = HandYOLO("cross-hands.cfg", "cross-hands.weights", ["hand"])
+        hand_model = HandYOLO("sleepiness/hand/cross-hands.cfg", "sleepiness/hand/cross-hands.weights", ["hand"])
     except:
         raise FileNotFoundError("Error: Could not load the hand model. Check the paths.")
     
