@@ -31,7 +31,7 @@ $ python train.py --img 320 --batch 16 --epochs 300 --data dataset.yml --weights
 ## 3. Real-time detection
 Run ```realTimeDetection.py``` to see how it works! Make sure to change the path to the trained weights from the second step accordingly. The output should look like this:
 
-![Example Image](https://github.com/MarWaltz/Sleepiness/blob/main/exampleOutput.jpg)
+![Example Image](https://github.com/MarWaltz/Sleepiness/blob/main/initial_tests/exampleOutput.jpg)
 
 
 
