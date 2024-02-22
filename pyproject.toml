@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Sleepiness"
+version = "0.0.1"
+authors = [
+  { name="Martin Waltz", email="martin.waltz@tu-dresden.de" },
+  { name="Niklas Paulig", email="niklas.paulig@tu-dresden.de" }
+]
+description = "Detecting sleepiness of people"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/MarWaltz/Sleepiness"
+Issues = "https://github.com/MarWaltz/Sleepiness/issues"
