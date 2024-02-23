@@ -1,6 +1,6 @@
 import cv2
-from detectHand import load_hand_model, hand_inference
-from PIL import Image, ImageDraw
+from sleepiness.hand.detectHand import load_hand_model
+
 
 if __name__ == "__main__":
 
@@ -14,10 +14,9 @@ if __name__ == "__main__":
 
         # Read current frame
         ret, frame = cap.read()
-        pimg = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
         # Inference 
-        width, height, inference_time, results = hand_inference(pimg=pimg, hand_model=hand_model)
+        width, height, inference_time, results = hand_model.inference(frame)
 
         # Display hands
         for detection in results:

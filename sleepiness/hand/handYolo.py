@@ -13,7 +13,7 @@ class HandYOLO:
         self.output_names = []
         self.labels = labels
         try:
-            self.net = cv2.dnn.readNetFromDarknet(config, model)
+            self.net = cv2.dnn.readNetFromDarknet(str(config), str(model))
         except:
             raise ValueError("Couldn't find the models!\nDid you forget to download them manually (and keep in the "
                              "correct directory, models/) or run the shell script?")

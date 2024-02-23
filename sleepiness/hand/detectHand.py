@@ -1,14 +1,13 @@
-from handYolo import HandYOLO
-import cv2
-import numpy as np
-from PIL import Image
-
+from pathlib import Path
+from sleepiness.hand.handYolo import HandYOLO
 
 def load_hand_model() -> HandYOLO:
     """Loads and returns the hand model."""
 
     try:
-        hand_model = HandYOLO("sleepiness/hand/cross-hands.cfg", "sleepiness/hand/cross-hands.weights", ["hand"])
+        cfg_path     = Path("sleepiness") / "hand" / "cross-hands.cfg"
+        weights_path = Path("sleepiness") / "hand" / "cross-hands.weights"
+        hand_model = HandYOLO(cfg_path, weights_path, ["hand"])
     except:
         raise FileNotFoundError("Error: Could not load the hand model. Check the paths.")
     
@@ -17,12 +16,3 @@ def load_hand_model() -> HandYOLO:
 
     print("Hand model loaded.")
     return hand_model
-
-def hand_inference(pimg : Image, hand_model : HandYOLO) -> tuple:
-    """Performs the YOLO-based hand inference for an image. Take care with RGB values!
-
-    Returns:
-        width, height, inference_time, results
-    """
-    npImg = cv2.cvtColor(np.array(pimg), cv2.COLOR_BGR2RGB)
-    return hand_model.inference(npImg)

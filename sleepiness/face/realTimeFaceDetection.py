@@ -1,5 +1,5 @@
 import cv2
-from detectFace import load_face_model
+from sleepiness.face.detectFace import load_face_model, detect_face
 
 
 if __name__ == "__main__":
@@ -16,7 +16,7 @@ if __name__ == "__main__":
         ret, frame = cap.read()
         
         # Make detections using YOLO
-        results = face_model.predict(frame, stream=False)
+        #results = face_model.predict(frame, stream=False)
         
         # Render
         # View results
@@ -26,11 +26,14 @@ if __name__ == "__main__":
         #cv2.imshow('YOLO', rendered_frame)
 
         # Visualize the results on the frame
-        annotated_frame = results[0].plot()
+        #annotated_frame = results[0].plot()
+
+        face_detected, face = detect_face(img=frame, face_model=face_model)
 
         # Display the annotated frame
-        cv2.imshow("Face Detection", annotated_frame)
-        
+        if face_detected:
+            cv2.imshow("Face Detection", face)
+
         # Exit
         if cv2.waitKey(10) & 0xFF == ord('q'):
             break

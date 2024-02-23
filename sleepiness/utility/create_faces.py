@@ -1,11 +1,8 @@
-import cv2
-import numpy as np
-from PIL import Image
 import os
-
-from pipeline import load_models, detect_face
+from PIL import Image
 from ultralytics import YOLO
-from handYolo import HandYOLO
+from sleepiness.face.detectFace import load_face_model, detect_face
+
 
 def save_detected_faces(source_folder : str, destination_folder : str, face_model : YOLO) -> None:
     """Detect and save faces in new images."""
@@ -15,7 +12,10 @@ def save_detected_faces(source_folder : str, destination_folder : str, face_mode
         os.makedirs(destination_folder)
 
     # Loop over the images in the source folder
-    for filename in os.listdir(source_folder):
+    for i, filename in enumerate(os.listdir(source_folder)):
+        
+        if i % 100 == 0:
+            print(f"{i} images processed.")
 
         if filename.endswith(".jpg"):
 
@@ -39,18 +39,15 @@ def save_detected_faces(source_folder : str, destination_folder : str, face_mode
 
                 # Save the face image
                 face_image.save(face_path)
-                print(f"Face detected in {filename} and saved as {face_filename}")
-            else:
-                print(f"No face detected in {filename}")
 
 if __name__ == "__main__":
 
     # Example usage
-    source_folder = "/home/mwaltz/sampleImages"  # Path to the folder containing sampled images
-    destination_folder = "/home/mwaltz/sampleImages/faces"  # Path to the folder to save detected faces
+    source_folder = "/home/mwaltz/sampleImages/raw"
+    destination_folder = "/home/mwaltz/sampleImages/faces"
 
-    # Load models
-    face_model, _ = load_models()
+    # Load model
+    face_model = load_face_model()
 
     # Call the function to detect and save faces
     save_detected_faces(source_folder=source_folder, destination_folder=destination_folder, face_model=face_model)

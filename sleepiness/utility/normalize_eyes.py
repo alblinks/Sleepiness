@@ -45,8 +45,8 @@ def convert_to_binary(input_dir, output_dir):
             cv2.imwrite(output_path, gray_img)
 
 # Input and output directories
-input_dir = "/home/mwaltz/sampleImages/eyes"
-output_dir = "/home/mwaltz/sampleImages/eyes_processed"
+input_dir = "/home/mwaltz/sampleImages/eyes_from_faces"
+output_dir = "/home/mwaltz/sampleImages/eyes_from_faces_processed"
 
 # Convert RGB images to binary (black and white) and save them
 convert_to_binary(input_dir, output_dir)

@@ -42,7 +42,10 @@ if __name__ == "__main__":
     eye_model = load_eye_model()
 
     # Loop over images in the input directory
-    for filename in os.listdir(input_dir):
+    for i, filename in enumerate(os.listdir(input_dir)):
+        if i % 100 == 0:
+            print(f"{i} images processed.")
+
         if filename.endswith(('.jpg', '.jpeg', '.png')):
             image_path = os.path.join(input_dir, filename)
             detect_and_save_eyes(image_path, eye_model, output_dir)

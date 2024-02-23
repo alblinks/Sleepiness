@@ -1,40 +1,53 @@
 from ultralytics import YOLO
-from pathlib import Path    
-from PIL import Image
+import numpy as np
+from pathlib import Path
+
 
 def load_face_model() -> YOLO:
     """Loads and returns the face model."""
 
     try:
-        face_model = YOLO("sleepiness/face/yolov8n-face.pt")
+        model_path = Path("sleepiness") / "face" / "yolov8n-face.pt"
+        face_model = YOLO(model_path)
     except:
         raise FileNotFoundError("Error: Could not load the face model. Check the paths.")
 
     print("Face model loaded.")
     return face_model
 
-def predict_and_save(img: Path, model: YOLO):
-    """Predict and save the image 
-    with bounding boxes and confidence"""
-    pimg = Image.open(img)
-    model.predict(pimg, save=True, project= "out", name="predict", exist_ok=True)
-
-def predict_and_save_dir(dir: Path, model: YOLO):
-    """Predict and save all 
-    images in a directory"""
-    for img in dir.iterdir():
-        predict_and_save(img, model)
+def detect_face(img : np.ndarray, face_model : YOLO) -> tuple:
+    """Detects faces on an image.
+    
+    Returns: 
+        Tuple of (bool, Image). 
         
-def predict_bbox(img: str, model: YOLO):
-    """
-    Predict bounding boxes and confidence for a single image
-    """
-    pimg = Image.open(img)
-    results = model.predict(pimg, stream=True)
-    for result in results:
-        r = result.boxes.xyxy
-        conf = result.boxes.conf
-        # Draw bounding boxes and confidence
-        for box,conf in zip(r.cpu().numpy(),conf.cpu().numpy()):
-            if conf > 0.5:
-                print(box, conf)
+    The bool is 'True' if at least one face is detected. 
+    The Image is then the (reduced-size) image containing the face with the largest bounding box, otherwise the original image. 
+    """ 
+    results = face_model.predict(img, stream=False, verbose=False)[0]
+
+    # No image detected
+    if len(results.boxes) == 0:
+        return False, img
+
+    # Select image with largest bounding box
+    largest_face_area  = 0
+    largest_face_image = img  # Default to original image
+    
+    for box in results.boxes.xyxy.cpu().numpy():
+
+        # Selection
+        xmin = int(box[0])
+        xmax = int(box[2])
+        ymin = int(box[1])
+        ymax = int(box[3])
+
+        # Calculate face area
+        face_area = (xmax - xmin) * (ymax - ymin)
+
+        # Crop the original image using the largest face bounding box
+        if face_area > largest_face_area:
+            largest_face_area  = face_area
+            largest_face_image = img[ymin:ymax, xmin:xmax]
+
+    return True, largest_face_image
