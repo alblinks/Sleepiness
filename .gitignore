@@ -11,3 +11,4 @@ pictures/*
 
 # Large weight files
 *.weights
+*.pt
