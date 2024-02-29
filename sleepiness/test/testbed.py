@@ -1,7 +1,9 @@
+from typing import Callable
 import torch
 from torchvision import datasets
 from torch.utils.data import DataLoader
 from warnings import warn
+import numpy as np
 
 from sleepiness.test import models
 from sleepiness.utility.misc import Loader
@@ -81,9 +83,55 @@ def create_test_dataloader(test_data_folder: str, batch_size:int = 32):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     return test_loader
 
+@with_loader
+def evaluate_model_single(model: Callable,
+                          device: torch.device,
+                          n_samples: int = 1000):
+    
+    if test_loader.batch_size != 1:
+        raise ValueError("The DataLoader must have a batch size of 1.")
+    
+    predictions = []
+    ground_truth = []
+    with torch.no_grad():  # No need to track gradients
+        iterations = 0
+        for path, label in test_loader.dataset.imgs:
+            if iterations == n_samples:
+                break
+
+            prediction = model(path)
+            predictions.append(prediction)
+            ground_truth.append(label.item())
+            
+            iterations += 1
+
+    predictions = torch.tensor(predictions)
+    ground_truth = torch.tensor(ground_truth)
+
+    # Calculate accuracy
+    accuracy = (predictions == ground_truth).sum() / len(ground_truth)
+
+    # Calculate class-wise precision, recall, and F1 score
+    class_names = test_loader.dataset.classes
+    
+    # Print nice header
+    print_colorful_header()
+    
+    # This enumeration only works because the classes are ordered 
+    # alphabetically or in the same order as the labels
+    for i, class_name in enumerate(class_names):
+        rec = recall(predictions, label, i)
+        prec = precision(predictions, label, i)
+        if rec == 0 and prec == 0:
+            warn(f"No actual or predicted positives for class {class_name}. "
+                 "F1 Score is 0.0.")
+            f1 = 0
+        f1 = f1_score(predictions, label, i)
+        print_colorful_metrics(class_name, accuracy, prec, rec, f1)
+
 # Function to evaluate the model using the test DataLoader
 @with_loader
-def evaluate_model(model: torch.nn.Module, 
+def evaluate_model_in_batches(model: torch.nn.Module, 
                    test_loader: DataLoader, 
                    device: torch.device,
                    n_samples: int = 1000):
@@ -107,7 +155,7 @@ def evaluate_model(model: torch.nn.Module,
             correct += (predicted == labels).sum().item()
             cbatch += 1
 
-    accuracy = accuracy = 100 * correct / total
+    accuracy = 100 * correct / total
 
     # Calculate class-wise precision, recall, and F1 score
     class_names = test_loader.dataset.classes
@@ -128,19 +176,6 @@ def evaluate_model(model: torch.nn.Module,
             f1 = 0
         f1 = f1_score(predicted, labels, i)
         print_colorful_metrics(class_name, accuracy, prec, rec, f1)
-
-class YourModel(torch.nn.Module):
-    """
-    This is a placeholder for your PyTorch model. 
-    Ensure this class defines your model architecture, and you have a trained model instance.
-    """
-    def __init__(self):
-        super(YourModel, self).__init__()
-        # Define your model's architecture here
-
-    def forward(self, x):
-        # Define the forward pass here
-        return x
 
 def print_colorful_header():
     """
@@ -173,11 +208,15 @@ if __name__ == "__main__":
     # Assuming CUDA is available, use GPU for evaluation; otherwise, use CPU.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Initialize your model here and load the trained weights
-    model = models.SleepinessE2E()
+    # To evaluate in batches your model must be a torch.nn.Module.
+    # For single image evaluation, you can use a function, 
+    # taking the image path as input and returning the class
+    # labels as an int.
+    # model = models.SleepinessE2E()
+    model = lambda x: 0  # Placeholder for your model
 
     # Create a DataLoader for your test data
-    test_loader = create_test_dataloader(test_data_folder)
+    test_loader = create_test_dataloader(test_data_folder, batch_size=1)
 
     # Evaluate the model
-    evaluate_model(model, test_loader, device, n_samples=100)
+    evaluate_model_single(model, test_loader, device, n_samples=100)
