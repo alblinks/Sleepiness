@@ -1,16 +1,21 @@
 import cv2
 import numpy as np
+import torch
+from torch import Tensor
+
+from torchvision import models
 from joblib import load
 from pathlib import Path
 from sklearn.pipeline import Pipeline
 from ultralytics import YOLO
+from sleepiness import __path__ as p
 
 
 def load_eye_model() -> YOLO:
     """Loads and returns the eye model."""
 
     try:
-        model_path = Path("sleepiness") / "eye" / "eye_yolov8n.pt"
+        model_path = Path(p[0]) / "eye" / "eye_yolov8n.pt"
         eye_model = YOLO(model_path)
     except:
         raise FileNotFoundError(f"Error: Could not load the eye model.")
@@ -22,13 +27,25 @@ def load_clustering_model() -> Pipeline:
     """Loads and returns the clustering model for open-eye detection."""
 
     try:
-        model_path = Path("sleepiness") / "eye" / "eye_clustering_model.joblib"
+        model_path = Path(p[0]) / "eye" / "eye_clustering_model.joblib"
         clustering_model = load(model_path)
     except:
         raise FileNotFoundError(f"Error: Could not load the clustering model.")
 
     print("Clustering model loaded.")
     return clustering_model
+
+def load_eye_classifier() -> models.ResNet:
+    """Loads and returns the ResNet18 model for open-eye detection."""
+
+    try:
+        model_path = Path(p[0]) / "eye" / "eye_classifier2.pt"
+        model: models.ResNet = torch.load(model_path)
+    except:
+        raise FileNotFoundError(f"Error: Could not load the eye classification model.")
+
+    print("Eye classification model loaded.")
+    return model
 
 def maxmin_scaling(image : np.ndarray) -> np.ndarray:
     """Applies MaxMin-scaling to a grayscale image."""
@@ -55,3 +72,9 @@ def preprocess_eye_img(img : np.ndarray)-> np.ndarray:
 
     # Flatten img
     return img.flatten()
+
+def max_min_scaling_t(image : Tensor) -> Tensor:
+    """Applies maxmin-scaling to an RGB torch tensor."""
+    max_val = torch.max(image)
+    min_val = torch.min(image)
+    return (image - min_val) / (max_val - min_val)
