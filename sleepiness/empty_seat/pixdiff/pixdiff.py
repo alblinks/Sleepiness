@@ -155,7 +155,7 @@ if __name__ == "__main__":
     #test_path = Path("pictures/empty_seat_dataset/test/awake")
     
     populate_avg_map(train_path)
-    # save_avg_map()
+    save_avg_map()
     plt.imshow(AVGMAP, cmap='gray')
     plt.savefig("average_empty.png", dpi=300)
     plt.close()

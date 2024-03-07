@@ -193,7 +193,7 @@ class EmptyfierPixDiff(EvalClassifier):
         Load the pre-trained model.
         """
         import pickle
-        self.pixmap: np.ndarray = pickle.load(open(f"{pixdiffPath[0]}/avgmap.pkl", "rb"))
+        self.pixmap: np.ndarray = pickle.load(open(f"{pixdiffPath[0]}/avgmap.nparray", "rb"))
         return self
         
     def forward(self, x: Tensor) -> Tensor:
