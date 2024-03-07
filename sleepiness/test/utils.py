@@ -21,8 +21,8 @@ def with_loader(func):
 
 class ClassifierMetrics:
     """
-    Class to calculate and store recall, precision, and F1 score for
-    a given class prediction.
+    Context manager to calculate and store recall, 
+    precision, and F1 score for a given class prediction.
     
     Input arguments:
     - outputs: Predicted class labels
@@ -109,6 +109,10 @@ class ClassifierMetricsPrinter:
     and F1 Score for each class.
     
     Keeps track of its header automatically
+    
+    Prints the header and the lines from the internal buffer
+    when the context manager is exited.
+    
     """
     # ANSI escape codes for colors and styles
     HEADER = '\033[95m'
