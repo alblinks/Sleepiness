@@ -15,15 +15,21 @@ from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
-from sleepiness.face.detectFace import load_face_model, detect_face
-from sleepiness.eye.detectEye import (load_eye_model, load_clustering_model, preprocess_eye_img, eye_detection,
-                                      load_eye_classifier, max_min_scaling_01, maxmin_scaling)
-from sleepiness.hand.detectHand import HandYOLO, load_hand_model
-
-
-def seat_empty(img : np.ndarray) -> bool:
-    """Returns 'True' if seat is empty, 'False' otherwise."""
-    return False
+from sleepiness.face.detectFace import (
+    load_face_model, detect_face
+)
+from sleepiness.eye.detectEye import (
+    load_eye_model, load_clustering_model, 
+    preprocess_eye_img, eye_detection,
+    load_eye_classifier, max_min_scaling_01, 
+    maxmin_scaling
+)
+from sleepiness.hand.detectHand import (
+    HandYOLO, load_hand_model
+)
+from sleepiness.empty_seat.pixdiff import (
+    is_empty, preprocess as empty_preprocessor
+) 
 
 def crop_vertically(img: np.ndarray) -> np.ndarray:
     """
@@ -229,7 +235,9 @@ def classify_img(path_to_img : str,
     assert img is not None, "Could not load the image."
 
     # 1. Step: Detect whether seat is empty
-    empty = seat_empty(img)
+    # TODO: switch empty detection to cv2
+    proc_for_empty = empty_preprocessor(Image.open(path_to_img))
+    empty = is_empty(proc_for_empty ,threshold= 0.08)
 
     if empty:
         out = "not there"
