@@ -1,5 +1,4 @@
 import torch
-from warnings import warn
 from sleepiness.utility.misc import Loader
 from numpy import ndarray
 
@@ -139,6 +138,7 @@ class ClassifierMetricsPrinter:
             )
             
     def __enter__(self):
+        self.lines.append(self.header)
         return self
         
     def log_metics(self,
@@ -160,6 +160,5 @@ class ClassifierMetricsPrinter:
         )
         
     def __exit__(self, exc_type, exc_value, traceback):
-        print(self.header)
         for line in self.lines:
             print(line)
