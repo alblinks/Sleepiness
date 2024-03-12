@@ -7,7 +7,6 @@ Authors: Martin Waltz, Niklas Paulig
 import os
 import cv2
 import numpy as np
-import supervision as spv
 import torch
 
 from PIL import Image
@@ -17,8 +16,8 @@ from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
 from sleepiness.face.detectFace import load_face_model, detect_face
-from sleepiness.eye.detectEye import (load_eye_model, load_clustering_model, preprocess_eye_img, 
-                                      load_eye_classifier, max_min_scaling_t, maxmin_scaling)
+from sleepiness.eye.detectEye import (load_eye_model, load_clustering_model, preprocess_eye_img, eye_detection,
+                                      load_eye_classifier, max_min_scaling_01, maxmin_scaling)
 from sleepiness.hand.detectHand import HandYOLO, load_hand_model
 
 
@@ -93,32 +92,6 @@ def detect_hands(img : np.ndarray, hand_model : HandYOLO) -> tuple:
     else:
         return True, hand_xxyy
 
-def eye_detection(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
-    """Processes an image and tries to detect eyes. 
-    
-    Returns a 2-tuple:
-        list of eye regions (np.ndarrays), list of bounding boxes (tuples) 
-    If there are no eyes, the list will be empty."""
-    # Rescale face image
-    faceImg = maxmin_scaling(faceImg)
-
-    # Inference
-    result = eye_model(faceImg, agnostic_nms=True, verbose=False)[0]
-    detections = spv.Detections.from_yolov8(result)
-
-    # Keep only those detections associated with eyes
-    eye_regions = []
-    eye_xxyy = []
-
-    for detection in detections:
-
-        # Class index of eyes is 0
-        if detection[2] == 0:
-            x_min, y_min, x_max, y_max = detection[0]
-            eye_regions.append(faceImg[int(y_min):int(y_max), int(x_min):int(x_max)])
-            eye_xxyy.append((int(x_min), int(x_max), int(y_min), int(y_max)))
-    return eye_regions, eye_xxyy
-
 def open_eye_clustering(eye_regions : list, clustering_model : Pipeline) -> bool:
     """Classifies a list of eye regions (np.ndarrays) as open- or closed-eye 
     building on a clustering model (PCA + kmeans).
@@ -134,14 +107,14 @@ def open_eye_clustering(eye_regions : list, clustering_model : Pipeline) -> bool
             return True
     return False
 
-def open_eye_resnet(eye_regions : list, eye_classifier : models.ResNet) -> bool:
+def open_eye_resnet(eye_regions : list, eye_classifier : models.ResNet) -> list[int]:
     """Classifies a list of eye regions (np.ndarrays) as open- or closed-eye using a ResNet classifier.
     
     Returns 'True' if an open-eye is detected; False otherwise."""
     transform = transforms.Compose([
-        transforms.Resize((50,20)),
+        transforms.Resize((20,50)), # height, width
         transforms.ToTensor(),
-        max_min_scaling_t,
+        max_min_scaling_01,
     ])
     labels = []
     for r in eye_regions:
@@ -364,7 +337,7 @@ if __name__ == "__main__":
     #path_to_img = "/home/mwaltz/train/subject_0025_bright/awake/fram0106.jpg" # ex1
     #path_to_img = "/home/mwaltz/train_awake/subject_0019_bright/fram3501.jpg" # ex2
     #path_to_img = "/home/mwaltz/train_awake/subject_0012_bright/fram0084.jpg" # ex3
-    path_to_img = "/home/mwaltz/train/subject_0022_dimmed/sleeping/fram2139.jpg" # ex4
+    path_to_img = "/home/mwaltz/Sleepiness_Outdated/train/subject_0022_dimmed/sleeping/fram2139.jpg" # ex4
 
     print(classify_img(path_to_img      = path_to_img, 
                        face_model       = face_model, 

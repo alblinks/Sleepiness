@@ -37,7 +37,7 @@ if __name__ == "__main__":
                 eye_detections.append(detection)
 
         labels = [
-            f"{confidence:0.2f}"
+            f"open"
             for _, confidence, _, _
             in eye_detections
         ]

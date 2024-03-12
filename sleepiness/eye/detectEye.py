@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
 import torch
-from torch import Tensor
+import supervision as spv
 
+from torch import Tensor
 from torchvision import models
 from joblib import load
 from pathlib import Path
@@ -39,7 +40,7 @@ def load_eye_classifier() -> models.ResNet:
     """Loads and returns the ResNet18 model for open-eye detection."""
 
     try:
-        model_path = Path(p[0]) / "eye" / "eye_classifier2.pt"
+        model_path = Path(p[0]) / "eye" / "eye_classifier.pt"
         model: models.ResNet = torch.load(model_path)
     except:
         raise FileNotFoundError(f"Error: Could not load the eye classification model.")
@@ -47,8 +48,34 @@ def load_eye_classifier() -> models.ResNet:
     print("Eye classification model loaded.")
     return model
 
+def eye_detection(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
+    """Processes an image and tries to detect eyes. 
+    
+    Returns a 2-tuple:
+        list of eye regions (np.ndarrays), list of bounding boxes (tuples) 
+    If there are no eyes, the list will be empty."""
+    # Rescale face image
+    faceImg = maxmin_scaling(faceImg)
+
+    # Inference
+    result = eye_model(faceImg, agnostic_nms=True, verbose=False)[0]
+    detections = spv.Detections.from_yolov8(result)
+
+    # Keep only those detections associated with eyes
+    eye_regions = []
+    eye_xxyy = []
+
+    for detection in detections:
+
+        # Class index of eyes is 0
+        if detection[2] == 0:
+            x_min, y_min, x_max, y_max = detection[0]
+            eye_regions.append(faceImg[int(y_min):int(y_max), int(x_min):int(x_max)])
+            eye_xxyy.append((int(x_min), int(x_max), int(y_min), int(y_max)))
+    return eye_regions, eye_xxyy
+
 def maxmin_scaling(image : np.ndarray) -> np.ndarray:
-    """Applies MaxMin-scaling to a grayscale image."""
+    """Normalizes an image to [0, 255]."""
     # Make image float-type
     image = image.astype(np.float32)
 
@@ -73,8 +100,8 @@ def preprocess_eye_img(img : np.ndarray)-> np.ndarray:
     # Flatten img
     return img.flatten()
 
-def max_min_scaling_t(image : Tensor) -> Tensor:
-    """Applies maxmin-scaling to an RGB torch tensor."""
+def max_min_scaling_01(image : Tensor) -> Tensor:
+    """Normalizes an image to [0,1]."""
     max_val = torch.max(image)
     min_val = torch.min(image)
     return (image - min_val) / (max_val - min_val)
