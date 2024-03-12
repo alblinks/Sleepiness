@@ -1,1 +1,1 @@
-from .pixdiff import preprocess
+from ._pixdiff import preprocess, is_empty

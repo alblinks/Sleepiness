@@ -118,15 +118,15 @@ def populate_avg_map(train_path: Path) -> bool:
             loader.desc = f"Calculating running average {n}"
             running_average(image, n)
     
-def is_empty(test_path: Path,
+def is_empty(image: Image.Image,
              threshold: float) -> bool:
     """
     Detect if a seat is empty.
     """
-    # Calculate the pixel difference between the test set and the running average
-    for image in dataloader(test_path):
-        if pixdiff(image) > threshold:
-            return True
+    # Calculate the pixel difference between 
+    # the test set and the running average
+    if pixdiff(image) > threshold:
+        return True
     return False
 
 def save_avg_map() -> None:
@@ -160,12 +160,12 @@ if __name__ == "__main__":
     plt.savefig("average_empty.png", dpi=300)
     plt.close()
     
-    distr = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/awake"))
-    plot_distribution(distr, "awake")
+    distr_awake = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/awake"))
+    plot_distribution(distr_awake, "awake")
     
-    distr = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/not there"))
-    plot_distribution(distr, "not there")
-
+    distr_nt = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/not there"))
+    plot_distribution(distr_nt, "not there")
+    
     # Plot the pairwise pixel difference distribution inside both training sets
     pw_dist = paiwise_pixdiff_distribution(Path("pictures/empty_seat_dataset/train/awake"))
     plot_distribution(pw_dist, "awake_pairwise")
