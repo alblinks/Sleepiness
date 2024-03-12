@@ -9,6 +9,9 @@ pictures/*
 # Pickle files
 *.pkl
 
+# Joblib files
+*.joblib
+
 # Large weight files
 *.weights
 *.pt
