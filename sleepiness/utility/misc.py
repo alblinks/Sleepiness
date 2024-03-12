@@ -26,7 +26,7 @@ class Loader:
         return self
 
     def _animate(self):
-        for c in cycle(self.steps):
+        for c in cycle(self.steps[::-1]):
             if self.done:
                 break
             print(f"{self.desc}... {c}", flush=True, end="\r")
@@ -34,6 +34,7 @@ class Loader:
 
     def __enter__(self):
         self.start()
+        return self
 
     def stop(self):
         self.done = True
