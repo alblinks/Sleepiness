@@ -1,6 +1,6 @@
 yolov5/
 
-pictures/*
+pictures/
 
 # Python bytecode
 *.pyc
