@@ -29,7 +29,10 @@ def detect_face(img : np.ndarray, face_model : YOLO, with_xyxy : bool = False) -
 
     # No image detected
     if len(results.boxes) == 0:
-        return False, img
+        if with_xyxy:
+            return False, img, None
+        else:
+            return False, img
 
     # Select image with largest bounding box
     largest_face_area  = 0
