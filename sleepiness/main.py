@@ -5,9 +5,12 @@ contains a sleeping person, or contains a person being awake.
 Authors: Martin Waltz, Niklas Paulig
 """
 import os
+from pathlib import Path
 import cv2
+import pickle
 import numpy as np
 import torch
+import uuid
 
 from PIL import Image
 from torchvision import models
@@ -15,13 +18,15 @@ from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
+from sleepiness.eye.CNN.model import CustomCNN
+
 from sleepiness.face.detectFace import (
     load_face_model, detect_face
 )
 from sleepiness.eye.detectEye import (
     load_eye_model, load_clustering_model, 
     preprocess_eye_img, eye_detection,
-    load_eye_classifier, max_min_scaling_01, 
+    load_eye_classifier_resnet, load_eye_classifier_cnn,
     maxmin_scaling
 )
 from sleepiness.hand.detectHand import (
@@ -29,7 +34,12 @@ from sleepiness.hand.detectHand import (
 )
 from sleepiness.empty_seat.pixdiff import (
     is_empty, preprocess as empty_preprocessor
-) 
+)
+
+# Load the average pixel map
+from sleepiness.empty_seat.pixdiff import __path__ as pixdiff_path 
+with open(f"{pixdiff_path[0]}/avgmap.nparray", "rb") as f:
+    AVGMAP = pickle.load(f)
 
 def crop_vertically(img: np.ndarray) -> np.ndarray:
     """
@@ -113,14 +123,15 @@ def open_eye_clustering(eye_regions : list, clustering_model : Pipeline) -> bool
             return True
     return False
 
-def open_eye_resnet(eye_regions : list, eye_classifier : models.ResNet) -> list[int]:
+def open_eye_classify(eye_regions : list[np.ndarray], 
+                      eye_classifier : torch.nn.Module
+                      ) -> list[int]:
     """Classifies a list of eye regions (np.ndarrays) as open- or closed-eye using a ResNet classifier.
     
     Returns 'True' if an open-eye is detected; False otherwise."""
     transform = transforms.Compose([
         transforms.Resize((20,50)), # height, width
         transforms.ToTensor(),
-        max_min_scaling_01,
     ])
     labels = []
     for r in eye_regions:
@@ -211,14 +222,14 @@ def viz_pipeline(original_img : np.ndarray, face_xxyy : tuple, eyes_xxyy : list,
     #cv2.destroyAllWindows()
 
     # Save the image with bounding boxes
-    output_file = "ex4_" + label + ".jpg"  # Change the filename and extension as needed
+    output_file = "full_pipeline_eval/ex4_" + label + "_" + str(uuid.uuid1()) + ".jpg"  # Change the filename and extension as needed
     cv2.imwrite(output_file, combined_img)
 
 def classify_img(path_to_img : str, 
                  face_model : YOLO, 
                  eye_model : YOLO, 
                  clustering_model : Pipeline, 
-                 eye_classifier : models.ResNet,
+                 eye_classifier : torch.nn.Module,
                  hand_model : HandYOLO,
                  viz : bool = False) -> str:
     """Processes the image. 
@@ -237,7 +248,7 @@ def classify_img(path_to_img : str,
     # 1. Step: Detect whether seat is empty
     # TODO: switch empty detection to cv2
     proc_for_empty = empty_preprocessor(Image.open(path_to_img))
-    empty = is_empty(proc_for_empty ,threshold= 0.08)
+    empty = is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP)
 
     if empty:
         out = "not there"
@@ -247,22 +258,28 @@ def classify_img(path_to_img : str,
         s += "Seat is not empty.\n"
 
     # 2. Step: If someone is there, detect face and select the one with largest bounding box
-    face_detected, faceImg, face_xxyy = detect_face(img=img, face_model=face_model, with_xyxy=True)
+    face_detected, faceImg, face_xxyy = detect_face(
+        img=img, face_model=face_model, with_xyxy=True
+    )
 
     # 3. Step: Run open-eye detection on the face
     if face_detected:
 
         if viz:
             s += "Face detected.\n"
-        eye_regions, eye_xxyy = eye_detection(faceImg=faceImg, eye_model=eye_model)
+        eye_regions, eye_xxyy = eye_detection(
+            faceImg=faceImg, eye_model=eye_model
+        )
 
         if len(eye_regions) > 0:
 
             if viz:
                 s += f"{len(eye_regions)} eye/s detected.\n"
 
-            #open_eyes_detected = open_eye_clustering(eye_regions=eye_regions, clustering_model=clustering_model)
-            eye_labels = open_eye_resnet(eye_regions=eye_regions, eye_classifier=eye_classifier)
+            eye_labels = open_eye_classify(
+                eye_regions=eye_regions, 
+                eye_classifier=eye_classifier
+            )
 
             if any(eye_labels):
         
@@ -276,11 +293,15 @@ def classify_img(path_to_img : str,
 
         elif viz:
             s += "No eyes detected.\n"
+    else:
+        eye_xxyy = []
 
     # 4. Step: If no open-eyes are detected, cut image and look for hands
     croppedImg = crop_horizontally(crop_vertically(img))
 
-    hands_detected, hands_xxyy = detect_hands(img=croppedImg, hand_model=hand_model)
+    hands_detected, hands_xxyy = detect_hands(
+        img=croppedImg, hand_model=hand_model
+    )
 
     if hands_detected:
         if viz:
@@ -293,7 +314,14 @@ def classify_img(path_to_img : str,
     
     # 5. Step: If none of the above situations appear, we assume the person sleeps
     if viz:
-        viz_pipeline(original_img=img, face_xxyy=face_xxyy, eyes_xxyy=eye_xxyy, hands_xxyy=hands_xxyy, label=out, text=s)
+        viz_pipeline(
+            original_img=img, 
+            face_xxyy=face_xxyy, 
+            eyes_xxyy=eye_xxyy, 
+            hands_xxyy=hands_xxyy, 
+            label=out, 
+            text=s
+        )
     return out
 
 
@@ -337,7 +365,7 @@ if __name__ == "__main__":
     face_model       = load_face_model()
     eye_model        = load_eye_model()
     #clustering_model = load_clustering_model()
-    eye_classifier   = load_eye_classifier()
+    eye_classifier   = load_eye_classifier_cnn()
     hand_model       = load_hand_model()
     print("------------------------------------------")
 
@@ -345,14 +373,34 @@ if __name__ == "__main__":
     #path_to_img = "/home/mwaltz/train/subject_0025_bright/awake/fram0106.jpg" # ex1
     #path_to_img = "/home/mwaltz/train_awake/subject_0019_bright/fram3501.jpg" # ex2
     #path_to_img = "/home/mwaltz/train_awake/subject_0012_bright/fram0084.jpg" # ex3
-    path_to_img = "/home/mwaltz/Sleepiness_Outdated/train/subject_0022_dimmed/sleeping/fram2139.jpg" # ex4
+    # path_to_img = "/home/mwaltz/Sleepiness_Outdated/train/subject_0022_dimmed/sleeping/fram2139.jpg" # ex4
 
-    print(classify_img(path_to_img      = path_to_img, 
-                       face_model       = face_model, 
-                       eye_model        = eye_model, 
-                       clustering_model = None,
-                       eye_classifier   = eye_classifier,
-                       hand_model       = hand_model,
-                       viz = True))
+    test_folder = Path("pictures/e2e_dataset/test")
+    
+    # Take 250 images from the "awake" and "sleeping" subfolders
+    for i, filename in enumerate(os.listdir(test_folder / "awake")):
+        print(i)
+        if i == 100:
+            break
+        path_to_img = test_folder / "awake" / filename
+        print(classify_img(path_to_img      = str(path_to_img), 
+                           face_model       = face_model, 
+                           eye_model        = eye_model, 
+                           clustering_model = None,
+                           eye_classifier   = eye_classifier,
+                           hand_model       = hand_model,
+                           viz = True))
+    for i, filename in enumerate(os.listdir(test_folder / "sleeping")):
+        if i == 100:
+            break
+        path_to_img = test_folder / "sleeping" / filename
+
+        print(classify_img(path_to_img      = str(path_to_img), 
+                            face_model       = face_model, 
+                            eye_model        = eye_model, 
+                            clustering_model = None,
+                            eye_classifier   = eye_classifier,
+                            hand_model       = hand_model,
+                            viz = True))
     #main(img_folder="/home/mwaltz/train_awake/subject_0019_bright",
     #     face_model=face_model, eye_model=eye_model, clustering_model=clustering_model, hand_model=hand_model)
