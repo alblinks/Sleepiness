@@ -4,7 +4,7 @@ from pathlib import Path
 from sleepiness import __path__ as p
 
 
-def load_face_model() -> YOLO:
+def load_model() -> YOLO:
     """Loads and returns the face model."""
 
     try:
@@ -16,7 +16,7 @@ def load_face_model() -> YOLO:
     print("Face model loaded.")
     return face_model
 
-def detect_face(img : np.ndarray, face_model : YOLO, with_xyxy : bool = False) -> tuple:
+def detect(img : np.ndarray, face_model : YOLO, with_xyxy : bool = False) -> tuple:
     """Detects faces on an image.
     
     Returns: 

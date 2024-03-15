@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 from ultralytics import YOLO
-from sleepiness.face.detectFace import load_face_model, detect_face
+import sleepiness.face as face
 
 
 def save_detected_faces(source_folder : str, destination_folder : str, face_model : YOLO) -> None:
@@ -26,7 +26,7 @@ def save_detected_faces(source_folder : str, destination_folder : str, face_mode
             image = Image.open(image_path)
             
             # Detect the face in the image
-            face_detected, face_image = detect_face(pimg=image, face_model=face_model)
+            face_detected, face_image = face.detect(pimg=image, face_model=face_model)
             
             # If a face is detected, save it
             if face_detected:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     destination_folder = "/home/mwaltz/sampleImages/faces"
 
     # Load model
-    face_model = load_face_model()
+    face_model = face.load_model()
 
     # Call the function to detect and save faces
     save_detected_faces(source_folder=source_folder, destination_folder=destination_folder, face_model=face_model)

@@ -1,11 +1,11 @@
 import cv2
-from sleepiness.face.detectFace import load_face_model, detect_face
+from sleepiness.face.detection import load_model, detect
 
 
 if __name__ == "__main__":
 
     # Load trained model
-    face_model = load_face_model()
+    face_model = load_model()
     
     # Access camera
     cap = cv2.VideoCapture("/dev/video0")
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         # Visualize the results on the frame
         #annotated_frame = results[0].plot()
 
-        face_detected, face = detect_face(img=frame, face_model=face_model)
+        face_detected, face = detect(img=frame, face_model=face_model)
 
         # Display the annotated frame
         if face_detected:

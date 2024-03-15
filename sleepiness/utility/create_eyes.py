@@ -2,7 +2,7 @@ import os
 import cv2
 import supervision as spv
 import random
-from sleepiness.face.detectFace import detect_face, load_face_model
+import sleepiness.face as face
 import sleepiness.eye as eye
 
 def detect_and_save_eyes(image_path, face_model, eye_model, output_dir):
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     output_dir = "/home/mwaltz/balanced/eyes/closed"
 
     # Load models
-    face_model = load_face_model()
+    face_model = face.load_model()
     eye_model  = eye.load_model()
 
     # Loop over images in the input directory

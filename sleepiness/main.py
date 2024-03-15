@@ -21,9 +21,7 @@ from torchvision.transforms import transforms
 from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
 
-from sleepiness.face.detectFace import (
-    load_face_model, detect_face
-)
+import sleepiness.face as face
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
@@ -253,7 +251,7 @@ def classify_img(path_to_img : str,
         s += "Seat is not empty.\n"
 
     # 2. Step: If someone is there, detect face and select the one with largest bounding box
-    face_detected, faceImg, face_xxyy = detect_face(
+    face_detected, faceImg, face_xxyy = face.detect(
         img=img, face_model=face_model, with_xyxy=True
     )
 
@@ -363,7 +361,7 @@ def main(img_folder : str,
 if __name__ == "__main__":
 
     # Load models
-    face_model       = load_face_model()
+    face_model       = face.load_model()
     eye_model        = eye.load_model()
     #clustering_model = load_clustering_model()
     eye_classifier   = eye.load_classifier_cnn()
