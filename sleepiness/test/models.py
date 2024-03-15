@@ -19,6 +19,7 @@ from sleepiness.test.utils import (
     with_loader, ClassifierMetrics,
     ClassifierMetricsPrinter
 )
+from sleepiness.utility.logger import logger
 
 class EvalClassifier(torch.nn.Module):
     """
@@ -216,7 +217,7 @@ class EmptyfierPixDiff(EvalClassifier):
         """
         Evaluate the model on the test dataset.
         """
-        print(
+        logger.info(
             "This model is not neural network-based. "
             "`device` settings will be ignored."
         )
