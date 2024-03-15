@@ -25,9 +25,7 @@ from sleepiness.face.detectFace import (
     load_face_model, detect_face
 )
 import sleepiness.eye as eye
-from sleepiness.hand.detectHand import (
-    HandYOLO, load_hand_model
-)
+import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
     is_empty, preprocess as empty_preprocessor
 )
@@ -66,7 +64,7 @@ def crop_horizontally(img: np.ndarray) -> np.ndarray:
     xmax = int(width * 0.75)
     return img[:, xmin:xmax]
 
-def detect_hands(img : np.ndarray, hand_model : HandYOLO) -> tuple:
+def detect_hands(img : np.ndarray, hand_model : hand.HandYOLO) -> tuple:
     """Detects hands in an image.
     
     Returns tuple of bool and a list.
@@ -227,7 +225,7 @@ def classify_img(path_to_img : str,
                  eye_model : YOLO, 
                  clustering_model : Pipeline, 
                  eye_classifier : torch.nn.Module,
-                 hand_model : HandYOLO,
+                 hand_model : hand.HandYOLO,
                  viz : bool = False) -> PassengerState:
     """Processes the image. 
     Returns: 
@@ -326,7 +324,7 @@ def main(img_folder : str,
          face_model : YOLO, 
          eye_model : YOLO, 
          clustering_model : Pipeline, 
-         hand_model : HandYOLO
+         hand_model : hand.HandYOLO
          ) -> str:
     
     awake_cnt = 0
@@ -369,7 +367,7 @@ if __name__ == "__main__":
     eye_model        = eye.load_model()
     #clustering_model = load_clustering_model()
     eye_classifier   = eye.load_classifier_cnn()
-    hand_model       = load_hand_model()
+    hand_model       = hand.load_model()
     print("------------------------------------------")
 
     # Perform detection

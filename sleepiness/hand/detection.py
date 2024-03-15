@@ -2,7 +2,7 @@ from pathlib import Path
 from sleepiness.hand.handYolo import HandYOLO
 from sleepiness import __path__ as p
 
-def load_hand_model() -> HandYOLO:
+def load_model() -> HandYOLO:
     """Loads and returns the hand model."""
 
     try:

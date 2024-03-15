@@ -1,11 +1,11 @@
 import cv2
-from sleepiness.hand.detectHand import load_hand_model
+from sleepiness.hand import load_model
 
 
 if __name__ == "__main__":
 
     # Load hand model
-    hand_model = load_hand_model()
+    hand_model = load_model()
 
     # Access camera
     cap = cv2.VideoCapture("/dev/video0")
