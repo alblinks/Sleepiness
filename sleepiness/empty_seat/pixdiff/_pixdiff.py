@@ -77,11 +77,13 @@ def running_average(image: np.ndarray, n: int) -> np.ndarray:
     AVGMAP = (AVGMAP * n + image) / (n + 1)
     return AVGMAP
 
-def pixdiff(image: np.ndarray) -> float:
+def pixdiff(image: np.ndarray, map: np.ndarray | None = None) -> float:
     """
     Calculate the pixel difference between an image
     and the AVGMAP.
     """
+    if map is not None:
+        return np.abs(image - map).mean()
     return np.abs(image - AVGMAP).mean()
 
 def pixdiff_distribution(path: Path) -> np.ndarray:
@@ -119,15 +121,16 @@ def populate_avg_map(train_path: Path) -> bool:
             running_average(image, n)
     
 def is_empty(image: Image.Image,
-             threshold: float) -> bool:
+             threshold: float,
+             map: np.ndarray) -> bool:
     """
     Detect if a seat is empty.
     """
     # Calculate the pixel difference between 
     # the test set and the running average
-    if pixdiff(image) > threshold:
-        return True
-    return False
+    if pixdiff(image,map) > threshold:
+        return False
+    return True
 
 def save_avg_map() -> None:
     """
