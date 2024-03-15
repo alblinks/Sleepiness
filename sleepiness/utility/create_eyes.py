@@ -3,8 +3,7 @@ import cv2
 import supervision as spv
 import random
 from sleepiness.face.detectFace import detect_face, load_face_model
-from sleepiness.eye.detectEye import eye_detection, load_eye_model, max_min_scaling_01
-
+import sleepiness.eye as eye
 
 def detect_and_save_eyes(image_path, face_model, eye_model, output_dir):
     """Function to detect eyes in an image and save if detected."""
@@ -19,7 +18,7 @@ def detect_and_save_eyes(image_path, face_model, eye_model, output_dir):
     if face_detected:
 
         # Detect eyes
-        eye_regions, _ = eye_detection(faceImg=img, eye_model=eye_model)
+        eye_regions, _ = eye.detect(faceImg=img, eye_model=eye_model)
 
         # Save them
         for i, r in enumerate(eye_regions):
@@ -41,7 +40,7 @@ if __name__ == "__main__":
 
     # Load models
     face_model = load_face_model()
-    eye_model  = load_eye_model()
+    eye_model  = eye.load_model()
 
     # Loop over images in the input directory
     x = os.listdir(input_dir)

@@ -18,17 +18,13 @@ from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
+from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
 
 from sleepiness.face.detectFace import (
     load_face_model, detect_face
 )
-from sleepiness.eye.detectEye import (
-    load_eye_model, load_clustering_model, 
-    preprocess_eye_img, eye_detection,
-    load_eye_classifier_resnet, load_eye_classifier_cnn,
-    maxmin_scaling
-)
+import sleepiness.eye as eye
 from sleepiness.hand.detectHand import (
     HandYOLO, load_hand_model
 )
@@ -114,7 +110,7 @@ def open_eye_clustering(eye_regions : list, clustering_model : Pipeline) -> bool
     
     Returns 'True' if an open-eye is detected; False otherwise."""
     # Preprocessing
-    eye_regions = [preprocess_eye_img(img) for img in eye_regions]
+    eye_regions = [eye.preprocess_img(img) for img in eye_regions]
     labels = clustering_model.predict(eye_regions)
     
     # open eyes are cluster 0
@@ -222,7 +218,8 @@ def viz_pipeline(original_img : np.ndarray, face_xxyy : tuple, eyes_xxyy : list,
     #cv2.destroyAllWindows()
 
     # Save the image with bounding boxes
-    output_file = "full_pipeline_eval/ex4_" + label + "_" + str(uuid.uuid1()) + ".jpg"  # Change the filename and extension as needed
+    # Change the filename and extension as needed
+    output_file = "full_pipeline_eval/"+ label + "_" + str(uuid.uuid1()) + ".jpg"
     cv2.imwrite(output_file, combined_img)
 
 def classify_img(path_to_img : str, 
@@ -231,14 +228,14 @@ def classify_img(path_to_img : str,
                  clustering_model : Pipeline, 
                  eye_classifier : torch.nn.Module,
                  hand_model : HandYOLO,
-                 viz : bool = False) -> str:
+                 viz : bool = False) -> PassengerState:
     """Processes the image. 
     Returns: 
         str; element of ["not there", "awake", "sleeping"]
     """
 
     # Default
-    out = "sleeping"
+    out = PassengerState.SLEEPING
     s = ""
 
     # Read image
@@ -251,7 +248,7 @@ def classify_img(path_to_img : str,
     empty = is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP)
 
     if empty:
-        out = "not there"
+        out = PassengerState.NOTTHERE
         if not viz:
             return out
     if viz:
@@ -267,7 +264,7 @@ def classify_img(path_to_img : str,
 
         if viz:
             s += "Face detected.\n"
-        eye_regions, eye_xxyy = eye_detection(
+        eye_regions, eye_xxyy = eye.detect(
             faceImg=faceImg, eye_model=eye_model
         )
 
@@ -285,9 +282,9 @@ def classify_img(path_to_img : str,
         
                 if viz:
                     s += f"{sum(eye_labels)} open. {len(eye_labels)-sum(eye_labels)} closed. \n"
-                out = "awake"
+                out = PassengerState.AWAKE
                 if not viz:
-                    return "awake"
+                    return out
             elif viz:
                 s += "All eyes closed.\n"
 
@@ -306,7 +303,7 @@ def classify_img(path_to_img : str,
     if hands_detected:
         if viz:
             s += "Hand/s detected in cropped image.\n"
-        out = "awake"
+        out = PassengerState.AWAKE
         if not viz:
             return out
     elif viz:
@@ -325,7 +322,13 @@ def classify_img(path_to_img : str,
     return out
 
 
-def main(img_folder : str, face_model : YOLO, eye_model : YOLO, clustering_model : Pipeline, hand_model : HandYOLO) -> str:
+def main(img_folder : str, 
+         face_model : YOLO, 
+         eye_model : YOLO, 
+         clustering_model : Pipeline, 
+         hand_model : HandYOLO
+         ) -> str:
+    
     awake_cnt = 0
     sleep_cnt = 0
     empty_cnt = 0
@@ -363,9 +366,9 @@ if __name__ == "__main__":
 
     # Load models
     face_model       = load_face_model()
-    eye_model        = load_eye_model()
+    eye_model        = eye.load_model()
     #clustering_model = load_clustering_model()
-    eye_classifier   = load_eye_classifier_cnn()
+    eye_classifier   = eye.load_classifier_cnn()
     hand_model       = load_hand_model()
     print("------------------------------------------")
 

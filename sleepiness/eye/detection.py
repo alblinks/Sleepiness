@@ -11,8 +11,13 @@ from sklearn.pipeline import Pipeline
 from ultralytics import YOLO
 from sleepiness import __path__ as p
 
+from sleepiness.eye.FFNN.model import FFNN
+from sleepiness.eye.FFNN.weights import __path__ as ffnn_WeightPath
+from sleepiness.eye.CNN.model import CustomCNN
+from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
 
-def load_eye_model() -> YOLO:
+
+def load_model() -> YOLO:
     """Loads and returns the eye model."""
 
     try:
@@ -36,7 +41,7 @@ def load_clustering_model() -> Pipeline:
     print("Clustering model loaded.")
     return clustering_model
 
-def load_eye_classifier() -> models.ResNet:
+def load_classifier_resnet() -> models.ResNet:
     """Loads and returns the ResNet18 model for open-eye detection."""
 
     try:
@@ -48,7 +53,39 @@ def load_eye_classifier() -> models.ResNet:
     print("Eye classification model loaded.")
     return model
 
-def eye_detection(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
+def load_classifier_ffnn() -> torch.nn.Module:
+    """Loads and returns the FFNN model for open-eye detection."""
+
+    try:
+        model_path = Path(ffnn_WeightPath[0]) / "eye_epoch_26.pt"
+        model: torch.nn.Module = torch.load(model_path)
+    except Exception as e:
+        raise FileNotFoundError(
+            f"Error: Could not load the eye classification model.",e
+        )
+
+    print("Feed-Forward eye classification model loaded.")
+    model.eval()
+    model.to("cpu")
+    return model
+
+def load_classifier_cnn() -> torch.nn.Module:
+    """Loads and returns the CNN model for open-eye detection."""
+
+    try:
+        model_path = Path(cnn_WeightPath[0]) / "eye_epoch_20.pt"
+        model: torch.nn.Module = torch.load(model_path)
+    except Exception as e:
+        raise FileNotFoundError(
+            f"Error: Could not load the eye classification model.", e
+        )
+
+    print("Convolutional eye classification model loaded.")
+    model.eval()
+    model.to("cpu")
+    return model
+
+def detect(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
     """Processes an image and tries to detect eyes. 
     
     Returns a 2-tuple:
@@ -87,7 +124,7 @@ def maxmin_scaling(image : np.ndarray) -> np.ndarray:
     # Convert back to uint8 and return
     return scaled_image.astype(np.uint8)
 
-def preprocess_eye_img(img : np.ndarray)-> np.ndarray:
+def preprocess_img(img : np.ndarray)-> np.ndarray:
     # Resize the image
     img = cv2.resize(img, (50, 20))
 
@@ -99,9 +136,3 @@ def preprocess_eye_img(img : np.ndarray)-> np.ndarray:
 
     # Flatten img
     return img.flatten()
-
-def max_min_scaling_01(image : Tensor) -> Tensor:
-    """Normalizes an image to [0,1]."""
-    max_val = torch.max(image)
-    min_val = torch.min(image)
-    return (image - min_val) / (max_val - min_val)

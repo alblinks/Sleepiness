@@ -6,7 +6,7 @@ from joblib import dump
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.pipeline import make_pipeline
-from sleepiness.eye.detectEye import preprocess_eye_img
+from sleepiness.eye import preprocess_img
 
 
 def load_images(input_dir):
@@ -28,7 +28,7 @@ def load_images(input_dir):
                 img = cv2.imread(image_path)
 
                 # Preprocess and store image
-                images.append(preprocess_eye_img(img))
+                images.append(preprocess_img(img))
 
                 # Keep track of filenames
                 filenames.append(filename)

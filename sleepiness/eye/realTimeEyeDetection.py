@@ -1,12 +1,12 @@
 import cv2
 import supervision as spv
 
-from detectEye import load_eye_model
+from sleepiness.eye import load_model
 
 if __name__ == "__main__":
 
     # Loading the model
-    eye_model = load_eye_model()
+    eye_model = load_model()
 
     # This will draw the detections
     class_colors = spv.ColorPalette.from_hex(['#ffff66', '#66ffcc', '#ff99ff', '#ffcc99'])

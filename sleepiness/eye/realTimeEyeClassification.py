@@ -3,9 +3,8 @@ import supervision as spv
 import numpy as np
 
 from sleepiness.face.detectFace import load_face_model, detect_face
-from sleepiness.eye.detectEye import (load_eye_model, load_clustering_model, preprocess_eye_img, eye_detection,
-                                      load_eye_classifier, max_min_scaling_01, maxmin_scaling)
-from sleepiness.main import open_eye_resnet
+import sleepiness.eye as eye
+from sleepiness.main import open_eye_classify
 
 
 def viz_pipeline(original_img : np.ndarray, face_xxyy : tuple, eyes_xxyy : list, eye_labels : list) -> None:
@@ -39,8 +38,8 @@ if __name__ == "__main__":
 
     # Loading the model
     face_model = load_face_model()
-    eye_model  = load_eye_model()
-    eye_classifier = load_eye_classifier()
+    eye_model  = eye.load_model()
+    eye_classifier = eye.load_classifier_resnet()
 
     # Reading frames from the webcam
     cap = cv2.VideoCapture(0)
@@ -53,10 +52,10 @@ if __name__ == "__main__":
 
         # Detect eyes
         if face_detected:
-            eye_regions, eye_xxyy = eye_detection(faceImg=faceImg, eye_model=eye_model)
+            eye_regions, eye_xxyy = eye.detect(faceImg=faceImg, eye_model=eye_model)
 
             if len(eye_regions) > 0:
-                eye_labels = open_eye_resnet(eye_regions=eye_regions, eye_classifier=eye_classifier)
+                eye_labels = open_eye_classify(eye_regions=eye_regions, eye_classifier=eye_classifier)
                 eye_labels = ["closed" if l == 0 else "open" for l in eye_labels]
 
         # Viz
