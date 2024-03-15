@@ -9,6 +9,7 @@ from torchvision.models.resnet import ResNet18_Weights
 from torchvision.transforms import transforms
 
 from sleepiness.eye.detectEye import max_min_scaling_01
+from sleepiness.eye.resnet18.weights import __path__ as ResNet18_WeightPath
 
 # Data transformation
 transform = transforms.Compose([
@@ -120,4 +121,4 @@ for epoch in range(epochs):
             model.train()
             
     # Save the model
-    torch.save(model, f'eye_epoch_{epoch+1}.pt')
+    torch.save(model, f'{ResNet18_WeightPath[0]}/eye_epoch_{epoch+1}.pt')
