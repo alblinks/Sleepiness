@@ -227,11 +227,23 @@ def classify_img(path_to_img : str,
                  viz : bool = False) -> PassengerState:
     """Processes the image. 
     Returns: 
-        str; element of ["not there", "awake", "sleeping"]
+        - PassengerState.AWAKE if the person is awake
+        - PassengerState.SLEEPING if the person is sleeping
+        - PassengerState.NOTTHERE if the seat is empty
+    
+    
+    Args:
+        path_to_img: Path to the image.
+        face_model: Model for face detection.
+        eye_model: Model for eye detection.
+        clustering_model: Pipeline for clustering eye regions. !Currently not in use.
+        eye_classifier: PyTorch model for eye classification.
+        hand_model: YOLO model for hand detection.
+        viz: If True, the function will display the image with bounding boxes and text.
     """
 
     # Default
-    out = PassengerState.SLEEPING
+    state = PassengerState.SLEEPING
     s = ""
 
     # Read image
@@ -244,9 +256,9 @@ def classify_img(path_to_img : str,
     empty = is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP)
 
     if empty:
-        out = PassengerState.NOTTHERE
+        state = PassengerState.NOTTHERE
         if not viz:
-            return out
+            return state
     if viz:
         s += "Seat is not empty.\n"
 
@@ -278,9 +290,9 @@ def classify_img(path_to_img : str,
         
                 if viz:
                     s += f"{sum(eye_labels)} open. {len(eye_labels)-sum(eye_labels)} closed. \n"
-                out = PassengerState.AWAKE
+                state = PassengerState.AWAKE
                 if not viz:
-                    return out
+                    return state
             elif viz:
                 s += "All eyes closed.\n"
 
@@ -299,9 +311,9 @@ def classify_img(path_to_img : str,
     if hands_detected:
         if viz:
             s += "Hand/s detected in cropped image.\n"
-        out = PassengerState.AWAKE
+        state = PassengerState.AWAKE
         if not viz:
-            return out
+            return state
     elif viz:
         s += "No hands detected in cropped image.\n"
     
@@ -312,10 +324,10 @@ def classify_img(path_to_img : str,
             face_xxyy=face_xxyy, 
             eyes_xxyy=eye_xxyy, 
             hands_xxyy=hands_xxyy, 
-            label=out, 
+            label=state.name.lower(), 
             text=s
         )
-    return out
+    return state
 
 
 def main(img_folder : str, 
