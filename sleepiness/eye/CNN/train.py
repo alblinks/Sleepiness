@@ -7,19 +7,22 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 
 from sleepiness.eye.CNN.weights import __path__ as customcnn_WeightPath
-from .model import CustomCNN
+from sleepiness.eye.CNN.model import CustomCNN
 
 # Data transformation
 transform = transforms.Compose([
     transforms.Resize((20,50)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
+    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
     transforms.ToTensor(),
 ])
 
 # Data loading
-train_dataset = torchvision.datasets.ImageFolder(root="pictures/eyes_aug_train", transform=transform)
+train_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_corrected_eyes/train", transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-val_dataset = torchvision.datasets.ImageFolder(root="pictures/eyes_aug_test", transform=transform)
+val_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_corrected_eyes/test", transform=transform)
 val_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
 
 model = CustomCNN()
