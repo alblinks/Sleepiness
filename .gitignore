@@ -1,6 +1,7 @@
 yolov5/
 
 pictures/
+full_pipeline_eval/
 
 # Python bytecode
 *.pyc
