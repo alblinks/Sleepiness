@@ -2,7 +2,7 @@ from pathlib import Path
 from sleepiness.hand.handYolo import HandYOLO
 from sleepiness import __path__ as p
 
-def load_model() -> HandYOLO:
+def load_model(confidence: float = 0.2) -> HandYOLO:
     """Loads and returns the hand model."""
 
     try:
@@ -13,7 +13,7 @@ def load_model() -> HandYOLO:
         raise FileNotFoundError("Error: Could not load the hand model. Check the paths.")
     
     hand_model.size = 416
-    hand_model.confidence = 0.2
+    hand_model.confidence = confidence
 
     print("Hand model loaded.")
     return hand_model
