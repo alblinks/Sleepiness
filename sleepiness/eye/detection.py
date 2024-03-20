@@ -58,7 +58,7 @@ def load_classifier_ffnn() -> torch.nn.Module:
 
     try:
         model_path = Path(ffnn_WeightPath[0]) / "eye_epoch_26.pt"
-        model: torch.nn.Module = torch.load(model_path)
+        model: torch.nn.Module = torch.load(model_path,map_location=torch.device('cpu'))
     except Exception as e:
         raise FileNotFoundError(
             f"Error: Could not load the eye classification model.",e
@@ -73,8 +73,8 @@ def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
 
     try:
-        model_path = Path(cnn_WeightPath[0]) / "eye_epoch_20.pt"
-        model: torch.nn.Module = torch.load(model_path)
+        model_path = Path(cnn_WeightPath[0]) / "eye_epoch_13.pt"
+        model: torch.nn.Module = torch.load(model_path, map_location=torch.device('cpu'))
     except Exception as e:
         raise FileNotFoundError(
             f"Error: Could not load the eye classification model.", e
@@ -85,7 +85,7 @@ def load_classifier_cnn() -> torch.nn.Module:
     model.to("cpu")
     return model
 
-def detect(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
+def detect(faceImg : np.ndarray, eye_model : YOLO, confidence: float = 0.5) -> tuple:
     """Processes an image and tries to detect eyes. 
     
     Returns a 2-tuple:
@@ -95,7 +95,7 @@ def detect(faceImg : np.ndarray, eye_model : YOLO) -> tuple:
     faceImg = maxmin_scaling(faceImg)
 
     # Inference
-    result = eye_model(faceImg, agnostic_nms=True, verbose=False)[0]
+    result = eye_model(faceImg, agnostic_nms=True, verbose=False, conf=confidence)[0]
     detections = spv.Detections.from_yolov8(result)
 
     # Keep only those detections associated with eyes
