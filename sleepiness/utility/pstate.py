@@ -29,6 +29,19 @@ class ReducedPassengerState(Enum):
     """
     AWAKE = 0
     SLEEPING = 1
+    NOTAVAILABLE = -1
     
     def __str__(self):
         return self.name
+
+# Transform the PassengerState to a ReducedPassengerState
+def reduce_state(state: PassengerState) -> ReducedPassengerState:
+    """
+    Reduce the state of the passenger to 
+    either sleeping or awake.
+    """
+    if state == PassengerState.AWAKE:
+        return ReducedPassengerState.AWAKE
+    elif state == PassengerState.SLEEPING:
+        return ReducedPassengerState.SLEEPING
+    else: return ReducedPassengerState.NOTAVAILABLE
