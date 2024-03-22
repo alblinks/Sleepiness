@@ -79,20 +79,15 @@ class EvalClassifier(torch.nn.Module):
     def print_scores(self,
                      all_predictions: Tensor, 
                      all_labels: Tensor,
-                     accuracy: float,
                      class_names: list[str]):
         """
         Print the accuracy, precision, recall, and F1 score.
         """
         all_predictions = torch.tensor(all_predictions)
         all_labels = torch.tensor(all_labels)
-        with tutils.ClassifierMetricsPrinter() as printer:
-            for lbl_idx, class_name in enumerate(class_names):
-                with tutils.MetricsCollector(all_predictions, all_labels, lbl_idx) as metrics:
-                    rec = metrics.recall()
-                    prec = metrics.precision()
-                    f1 = metrics.f1_score()
-                    printer.log_metics(class_name,accuracy,prec,rec,f1)
+        tutils.MetricsCollector(
+            self, all_predictions, all_labels, class_names
+        ).summary()
     
     @tutils.with_loader
     def evaluate(self,
@@ -127,12 +122,10 @@ class EvalClassifier(torch.nn.Module):
                 correct += (predicted == labels).sum().item()
                 cbatch += 1
 
-        accuracy = 100 * correct / total
-
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
 
-        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+        self.print_scores(all_predictions, all_labels, class_names)
 
 class SleepinessE2E(EvalClassifier):
     """
@@ -287,12 +280,10 @@ class EmptyfierPixDiff(EvalClassifier):
                 correct += int(prediction == label)
                 cbatch += 1
                 
-        accuracy = 100 * correct / total
-        
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
         
-        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+        self.print_scores(all_predictions, all_labels, class_names)
                     
 class ReducedFullPipeline(EvalClassifier):
     """
@@ -383,14 +374,10 @@ class ReducedFullPipeline(EvalClassifier):
             correct += int(prediction == label)
             cbatch += 1
                 
-        accuracy = 100 * correct / total
-        
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
 
-        print(all_predictions)
-        print(all_labels)
-        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+        self.print_scores(all_predictions, all_labels, class_names)
 
 class FullPipeline(ReducedFullPipeline):
     """
@@ -435,9 +422,7 @@ class FullPipeline(ReducedFullPipeline):
             correct += int(prediction == label)
             cbatch += 1
                 
-        accuracy = 100 * correct / total
-        
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
     
-        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+        self.print_scores(all_predictions, all_labels, class_names)
