@@ -1,24 +1,40 @@
 from __future__ import annotations
+from typing import Callable
 import numpy as np
 
 import torch
 from PIL import Image
 from abc import abstractmethod
+from functools import partial
+from random import shuffle
 
-from warnings import warn
 from torch import Tensor
 from torchvision import models
 from torch.utils.data import DataLoader
+
+# Import trained weight paths
 from sleepiness.end2end.weights import __path__ as e2eWeights
 from sleepiness.empty_seat.CNN.weights import __path__ as emptyWeightsCNN
 from sleepiness.empty_seat.FFNN.weights import __path__ as emptyWeightsFFNN
+
+# Load hand, eye and face modules
+import sleepiness.hand as hand
+import sleepiness.eye as eye
+import sleepiness.face as face
+
+# Import PassengerState
+from sleepiness.utility.pstate import (
+    reduce_state, ReducedPassengerState,
+    PassengerState
+)
+
+# import full pipeline
+from sleepiness.main import classify_img as full_pipeline
+
 from sleepiness.empty_seat.pixdiff import (
     __path__ as pixdiffPath , preprocess
 )
-from sleepiness.test.utils import (
-    with_loader, ClassifierMetrics,
-    ClassifierMetricsPrinter
-)
+import sleepiness.test.utils as tutils
 from sleepiness.utility.logger import logger
 
 class EvalClassifier(torch.nn.Module):
@@ -59,7 +75,26 @@ class EvalClassifier(torch.nn.Module):
         """
         raise NotImplementedError
     
-    @with_loader
+    @abstractmethod
+    def print_scores(self,
+                     all_predictions: Tensor, 
+                     all_labels: Tensor,
+                     accuracy: float,
+                     class_names: list[str]):
+        """
+        Print the accuracy, precision, recall, and F1 score.
+        """
+        all_predictions = torch.tensor(all_predictions)
+        all_labels = torch.tensor(all_labels)
+        with tutils.ClassifierMetricsPrinter() as printer:
+            for lbl_idx, class_name in enumerate(class_names):
+                with tutils.MetricsCollector(all_predictions, all_labels, lbl_idx) as metrics:
+                    rec = metrics.recall()
+                    prec = metrics.precision()
+                    f1 = metrics.f1_score()
+                    printer.log_metics(class_name,accuracy,prec,rec,f1)
+    
+    @tutils.with_loader
     def evaluate(self,
                 test_loader: DataLoader, 
                 device: torch.device,
@@ -97,15 +132,7 @@ class EvalClassifier(torch.nn.Module):
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
 
-        all_predictions = torch.tensor(all_predictions)
-        all_labels = torch.tensor(all_labels)
-        with ClassifierMetricsPrinter() as printer:
-            for lbl_idx, class_name in enumerate(class_names):
-                with ClassifierMetrics(all_predictions, all_labels, lbl_idx) as metrics:
-                    rec = metrics.recall()
-                    prec = metrics.precision()
-                    f1 = metrics.f1_score()
-                    printer.log_metics(class_name,accuracy,prec,rec,f1)
+        self.print_scores(all_predictions, all_labels, accuracy, class_names)
 
 class SleepinessE2E(EvalClassifier):
     """
@@ -209,7 +236,7 @@ class EmptyfierPixDiff(EvalClassifier):
         """
         return np.abs(image - self.pixmap).mean()
             
-    @with_loader
+    @tutils.with_loader
     def evaluate(self,
                 test_loader: DataLoader,
                 device: torch.device,
@@ -265,12 +292,152 @@ class EmptyfierPixDiff(EvalClassifier):
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
         
-        all_predictions = torch.tensor(all_predictions)
-        all_labels = torch.tensor(all_labels)
-        with ClassifierMetricsPrinter() as printer:
-            for lbl_idx, class_name in enumerate(class_names):
-                with ClassifierMetrics(all_predictions, all_labels, lbl_idx) as metrics:
-                    rec = metrics.recall()
-                    prec = metrics.precision()
-                    f1 = metrics.f1_score()
-                    printer.log_metics(class_name,accuracy,prec,rec,f1)
+        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+                    
+class ReducedFullPipeline(EvalClassifier):
+    """
+    Reduced pipeline model:
+    
+    Here, we only classify AWAKE and SLEEPING states.
+    NOTTHERE is not considered.
+    """
+    def __init__(self, 
+                 eye_model_confidence: float = 0.2,
+                 hand_model_confidence: float = 0.5):
+        
+        self.eye_model_confidence = eye_model_confidence
+        self.hand_model_confidence = hand_model_confidence
+        super().__init__()
+    
+    def load_model(self):
+        """
+        Load the pre-trained model.
+        """
+        self.face_model = face.load_model()
+        self.eye_model = eye.load_model()
+        self.eye_classifier = eye.load_classifier_cnn()
+        self.hand_model = hand.load_model(self.hand_model_confidence)
+        self.model = partial(
+            full_pipeline, 
+            face_model=self.face_model,
+            eye_model=self.eye_model,
+            eye_model_confidence=self.eye_model_confidence,
+            eye_classifier=self.eye_classifier,
+            hand_model=self.hand_model,
+            clustering_model=None
+        )
+        return self
+        
+    def forward(self, x: Tensor) -> Tensor:
+        return NotImplementedError(
+            "The full pipeline model does not "
+            "have a single forward pass."
+        )
+    
+    @tutils.with_loader
+    def evaluate(self,
+                test_loader: DataLoader,
+                device: torch.device,
+                n_samples: int = 1000):
+        """
+        Evaluate the model on the test dataset.
+        """
+        logger.info(
+            "This model has multiple nets. "
+            "`device` control is taken care of."
+        )
+        del device
+        
+        correct = 0
+        total = 0
+        all_predictions = []
+        all_labels = []
+        cbatch = 0
+        imgs = test_loader.dataset.imgs.copy()
+        shuffle(imgs)
+        for idx, (path_to_img, label) in enumerate(imgs):
+            if idx == n_samples:
+                break
+                
+            # Classify the image
+            state = self.model(path_to_img=path_to_img)
+            
+            # Coerce to ReducedPassengerState
+            state = reduce_state(state)
+            if state is ReducedPassengerState.NOTAVAILABLE:
+                logger.warning(
+                    f"Image {path_to_img} is classified as NOT_THERE. "
+                    "Skipping in reduced pipeline."
+                )
+                continue
+            
+            # Classify state
+            if state is ReducedPassengerState.AWAKE:
+                prediction = ReducedPassengerState.AWAKE.value
+                all_predictions.append(prediction)
+            elif state is ReducedPassengerState.SLEEPING:
+                prediction = ReducedPassengerState.SLEEPING.value
+                all_predictions.append(prediction)
+            all_labels.append(label)
+            total += 1
+            correct += int(prediction == label)
+            cbatch += 1
+                
+        accuracy = 100 * correct / total
+        
+        # Calculate class-wise precision, recall, and F1 score
+        class_names = test_loader.dataset.classes
+
+        print(all_predictions)
+        print(all_labels)
+        self.print_scores(all_predictions, all_labels, accuracy, class_names)
+
+class FullPipeline(ReducedFullPipeline):
+    """
+    Full pipeline model:
+    
+    Here, we classify all three states:
+    AWAKE, SLEEPING, and NOT_THERE.
+    """
+    
+    @tutils.with_loader
+    def evaluate(self,
+                test_loader: DataLoader,
+                device: torch.device,
+                n_samples: int = 1000):
+        """
+        Evaluate the model on the test dataset.
+        """
+        logger.info(
+            "This model has multiple nets. "
+            "`device` control is taken care of."
+        )
+        del device
+        
+        correct = 0
+        total = 0
+        all_predictions = []
+        all_labels = []
+        cbatch = 0
+        imgs = test_loader.dataset.imgs.copy()
+        shuffle(imgs)
+        for idx, (path_to_img, label) in enumerate(imgs):
+            if idx == n_samples:
+                break
+                
+            # Classify the image
+            state: PassengerState = self.model(path_to_img=path_to_img)
+            
+            prediction = state.value
+            all_predictions.append(prediction)
+            all_labels.append(label)
+            total += 1
+            correct += int(prediction == label)
+            cbatch += 1
+                
+        accuracy = 100 * correct / total
+        
+        # Calculate class-wise precision, recall, and F1 score
+        class_names = test_loader.dataset.classes
+    
+        self.print_scores(all_predictions, all_labels, accuracy, class_names)
