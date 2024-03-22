@@ -21,7 +21,7 @@ from torchvision.transforms import transforms
 from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
 
-import sleepiness.face as face
+import sleepiness.face.yoloface as face
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
@@ -222,7 +222,6 @@ def classify_img(path_to_img : str,
                  face_model : YOLO, 
                  eye_model : YOLO, 
                  eye_model_confidence : float,
-                 clustering_model : Pipeline, 
                  eye_classifier : torch.nn.Module,
                  hand_model : hand.HandYOLO,
                  viz : bool = False) -> PassengerState:
@@ -333,7 +332,6 @@ def classify_img(path_to_img : str,
 def main(img_folder : str, 
          face_model : YOLO, 
          eye_model : YOLO, 
-         clustering_model : Pipeline, 
          hand_model : hand.HandYOLO
          ) -> str:
     
@@ -349,7 +347,6 @@ def main(img_folder : str,
         output = classify_img(path_to_img=img_folder + "/" + filename, 
                               face_model=face_model, 
                               eye_model=eye_model,
-                              clustering_model=clustering_model,
                               hand_model=hand_model,
                               viz=False)
         assert output in ["awake", "sleeping", "not there"]
