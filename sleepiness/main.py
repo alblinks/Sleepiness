@@ -221,6 +221,7 @@ def viz_pipeline(original_img : np.ndarray, face_xxyy : tuple, eyes_xxyy : list,
 def classify_img(path_to_img : str, 
                  face_model : YOLO, 
                  eye_model : YOLO, 
+                 eye_model_confidence : float,
                  clustering_model : Pipeline, 
                  eye_classifier : torch.nn.Module,
                  hand_model : hand.HandYOLO,
@@ -253,9 +254,8 @@ def classify_img(path_to_img : str,
     # 1. Step: Detect whether seat is empty
     # TODO: switch empty detection to cv2
     proc_for_empty = empty_preprocessor(Image.open(path_to_img))
-    empty = is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP)
 
-    if empty:
+    if is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP):
         state = PassengerState.NOTTHERE
         if not viz:
             return state
@@ -273,7 +273,7 @@ def classify_img(path_to_img : str,
         if viz:
             s += "Face detected.\n"
         eye_regions, eye_xxyy = eye.detect(
-            faceImg=faceImg, eye_model=eye_model
+            faceImg=faceImg, eye_model=eye_model, confidence=eye_model_confidence
         )
 
         if len(eye_regions) > 0:
