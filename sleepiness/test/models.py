@@ -29,7 +29,7 @@ from sleepiness.utility.pstate import (
 )
 
 # import full pipeline
-from sleepiness.main import classify_img as full_pipeline
+import sleepiness.pipelines as pipelines
 
 from sleepiness.empty_seat.pixdiff import (
     __path__ as pixdiffPath , preprocess
@@ -304,19 +304,12 @@ class ReducedFullPipeline(EvalClassifier):
         """
         Load the pre-trained model.
         """
-        self.face_model = face.load_model()
-        self.eye_model = eye.load_model()
-        self.eye_classifier = eye.load_classifier_cnn()
-        self.hand_model = hand.load_model(self.hand_model_confidence)
-        self.model = partial(
-            full_pipeline, 
-            face_model=self.face_model,
-            eye_model=self.eye_model,
+        pipeline = pipelines.FullPipeline(
             eye_model_confidence=self.eye_model_confidence,
-            eye_classifier=self.eye_classifier,
-            hand_model=self.hand_model,
-            clustering_model=None
+            hand_model_confidence=self.hand_model_confidence
         )
+        self.model = pipeline.classify
+        
         return self
         
     def forward(self, x: Tensor) -> Tensor:
@@ -333,9 +326,13 @@ class ReducedFullPipeline(EvalClassifier):
         """
         Evaluate the model on the test dataset.
         """
-        logger.info(
+        logger.warning(
             "This model has multiple nets. "
-            "`device` control is taken care of."
+            "`device` will be ignored."
+        )
+        logger.warning(
+            "Model uses raw pictures. All transforms "
+            "given by the test loader are ignored."
         )
         del device
         
@@ -399,6 +396,10 @@ class FullPipeline(ReducedFullPipeline):
             "This model has multiple nets. "
             "`device` control is taken care of."
         )
+        logger.warning(
+            "Model uses raw pictures. All transforms "
+            "given by the test loader are ignored."
+        )
         del device
         
         correct = 0
@@ -426,3 +427,23 @@ class FullPipeline(ReducedFullPipeline):
         class_names = test_loader.dataset.classes
     
         self.print_scores(all_predictions, all_labels, class_names)
+        
+class NoEyesReducedPipeline(ReducedFullPipeline):
+    """
+    Reduced pipeline model:
+    
+    Here, we only classify AWAKE and SLEEPING states.
+    NOTTHERE is not considered.
+    """
+    def __init__(self):
+        pass
+
+    
+    def load_model(self):
+        """
+        Load the pre-trained model.
+        """
+        pipeline = pipelines.NoEyePipeline()
+        self.model = pipeline.classify
+        
+        return self
