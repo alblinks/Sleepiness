@@ -27,20 +27,13 @@ def create_test_dataloader(test_data_folder: str,
 
 if __name__ == "__main__":
     # Path to your test images (organized in folders by class)
-    test_data_folder = "pictures/e2e_dataset/test"
+    test_data_folder = "pictures/balanced_correct_full/test"
+    # test_data_folder = "pictures/e2e_dataset/test"
     
     # Assuming CUDA is available, use GPU for evaluation; otherwise, use CPU.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # To evaluate in batches your model must be a torch.nn.Module.
-    # For single image evaluation, you can use a function, 
-    # taking the image path as input and returning the class
-    # labels as an int.
-    # model = models.EmptyfierCNN().load_model()
-    #model = lambda x: 0  # Placeholder for your model
-    model = models.ReducedFullPipeline(
-        eye_model_confidence=0.1,
-        hand_model_confidence=0.7).load_model()
+    model = models.NoEyesReducedPipeline().load_model()
 
     # Create a DataLoader for your test data
     test_loader = create_test_dataloader(
@@ -50,5 +43,4 @@ if __name__ == "__main__":
     )
 
     # Evaluate the model
-    # evaluate_model_single(model, test_loader, device, n_samples=1000)
-    model.evaluate(test_loader, device, n_samples=50)
+    model.evaluate(test_loader, device, n_samples=100)
