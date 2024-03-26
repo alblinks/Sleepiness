@@ -1,10 +1,5 @@
-import torch
-import os
 import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-#from empty_seat import is_empty
-from PIL import Image
+from sleepiness.pipelines import NoEyePipeline
 
 # Load trained model
 #model = torch.hub.load('ultralytics/yolov5', 'custom', path='yolov5/runs/train/exp2/weights/last.pt', force_reload=True)
@@ -18,6 +13,8 @@ from PIL import Image
 #plt.show()
 #plt.savefig("Example.pdf")
 
+model = NoEyePipeline()
+
 # Access camera
 cap = cv2.VideoCapture("/dev/video0")
 
@@ -25,15 +22,14 @@ while cap.isOpened():
 
     # Read current frame
     ret, frame = cap.read()
-    pimg = Image.fromarray(frame)
-
-    #print(is_empty(pimg))
     # Make detections 
-    #results = model(frame)
+    result = model.classify(frame)
     
+    # Write a text in the top right corner
+    cv2.putText(frame, f"{result}", (10, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     # Render
-    #pimg.show()
-    cv2.imshow("Detection", frame)
+    cv2.imshow(f"Detection", frame)
+    
     
     # Exit
     if cv2.waitKey(10) & 0xFF == ord('q'):
