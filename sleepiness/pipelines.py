@@ -386,12 +386,11 @@ class FullPipeline(Pipeline):
 class NoEyePipeline(FullPipeline):
     
     def __init__(self):
-        from sleepiness.face.CNN.weights import __path__ as face_weights_path
         self.face_detection = facedetect.load_model()
         self.face_classification = faceclassify.load_model()
 
     def classify(self,
-                path_to_img : str, 
+                img_or_path : str | np.ndarray, 
                 viz : bool = True) -> PassengerState:
         """Processes the image. 
         Returns: 
@@ -415,12 +414,17 @@ class NoEyePipeline(FullPipeline):
         s = ""
 
         # Read image
-        img = cv2.imread(path_to_img)
+        if isinstance(img_or_path, str):
+            img = cv2.imread(img_or_path)
+        else: img = img_or_path
         assert img is not None, "Could not load the image."
 
         # 1. Step: Detect whether seat is empty
         # TODO: switch empty detection to cv2
-        proc_for_empty = empty_preprocessor(Image.open(path_to_img))
+        if isinstance(img_or_path, str):
+            proc_for_empty = empty_preprocessor(Image.open(img_or_path))
+        else:
+            proc_for_empty = empty_preprocessor(Image.fromarray(img))
 
         if is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP):
             state = PassengerState.NOTTHERE
@@ -442,7 +446,7 @@ class NoEyePipeline(FullPipeline):
 
             # Classify the face
             res = faceclassify.classify(faceImg, self.face_classification)
-            if res == 1:
+            if res == 0:
                 state = PassengerState.AWAKE
                 if not viz:
                     return state
