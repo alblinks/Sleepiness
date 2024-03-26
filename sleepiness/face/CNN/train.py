@@ -4,26 +4,18 @@ import torchvision
 from torch import nn, optim
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from torchvision.transforms import transforms
+from sleepiness.face.CNN.transforms import train_transform as transform
 
 from sleepiness.face.CNN.weights import __path__ as customcnn_WeightPath
 from sleepiness.face.CNN.model import CustomCNN
 
-# Data transformation
-transform = transforms.Compose([
-    transforms.Resize((100,200)),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomVerticalFlip(),
-    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
-    transforms.ToTensor(),
-])
 
 # Data loading
-train_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_faces/train", transform=transform)
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+train_dataset = torchvision.datasets.ImageFolder(root="pictures/notcorrect_faces/train", transform=transform)
+train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 
-val_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_faces/test", transform=transform)
-val_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
+val_dataset = torchvision.datasets.ImageFolder(root="pictures/notcorrect_faces/test", transform=transform)
+val_loader = DataLoader(val_dataset, batch_size=128, shuffle=True)
 
 model = CustomCNN()
 # Set the device
