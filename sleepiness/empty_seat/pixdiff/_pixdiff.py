@@ -120,7 +120,7 @@ def populate_avg_map(train_path: Path) -> bool:
             loader.desc = f"Calculating running average {n}"
             running_average(image, n)
     
-def is_empty(image: Image.Image,
+def is_empty(image: np.ndarray,
              threshold: float,
              map: np.ndarray) -> bool:
     """
