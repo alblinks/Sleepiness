@@ -22,10 +22,10 @@ from torchvision.transforms import transforms
 
 from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
-from sleepiness.face.CNN.transforms import val_transform as face_transform
+from sleepiness.face.smallCNN.transforms import val_transform as face_transform
 
 import sleepiness.face.yoloface as facedetect
-import sleepiness.face.CNN as faceclassify
+import sleepiness.face.smallCNN as smallface
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
@@ -278,7 +278,7 @@ class FullPipeline(Pipeline):
         cv2.imwrite(output_file, combined_img)
 
     def classify(self,
-                    path_to_img : str, 
+                    img_or_path : str | np.ndarray, 
                     viz : bool = False) -> PassengerState:
         """Processes the image. 
         Returns: 
@@ -302,12 +302,17 @@ class FullPipeline(Pipeline):
         s = ""
 
         # Read image
-        img = cv2.imread(path_to_img)
+        if isinstance(img_or_path, str):
+            img = cv2.imread(img_or_path)
+        else: img = img_or_path
         assert img is not None, "Could not load the image."
 
         # 1. Step: Detect whether seat is empty
         # TODO: switch empty detection to cv2
-        proc_for_empty = empty_preprocessor(Image.open(path_to_img))
+        if isinstance(img_or_path, str):
+            proc_for_empty = empty_preprocessor(Image.open(img_or_path))
+        else:
+            proc_for_empty = empty_preprocessor(Image.fromarray(img))
 
         if is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP):
             state = PassengerState.NOTTHERE
@@ -387,7 +392,7 @@ class NoEyePipeline(FullPipeline):
     
     def __init__(self):
         self.face_detection = facedetect.load_model()
-        self.face_classification = faceclassify.load_model()
+        self.face_classification = smallface.load_model()
 
     def classify(self,
                 img_or_path : str | np.ndarray, 
@@ -445,7 +450,7 @@ class NoEyePipeline(FullPipeline):
                 s += "Face detected.\n"
 
             # Classify the face
-            res = faceclassify.classify(faceImg, self.face_classification)
+            res = smallface.classify(faceImg, self.face_classification)
             if res == 0:
                 state = PassengerState.AWAKE
                 if not viz:
@@ -508,49 +513,3 @@ def main(img_folder : str,
     print(f"Awake:    {awake_cnt} of {N} images.")
     print(f"Sleeping: {sleep_cnt} of {N} images.")
     print(f"Empty:    {empty_cnt} of {N} images.")
-
-
-if __name__ == "__main__":
-
-    # Load models
-    face_model       = facedetect.load_model()
-    eye_model        = eye.load_model()
-    eye_classifier   = eye.load_classifier_cnn()
-    hand_model       = hand.load_model()
-    print("------------------------------------------")
-
-    # Perform detection
-    #path_to_img = "/home/mwaltz/train/subject_0025_bright/awake/fram0106.jpg" # ex1
-    #path_to_img = "/home/mwaltz/train_awake/subject_0019_bright/fram3501.jpg" # ex2
-    #path_to_img = "/home/mwaltz/train_awake/subject_0012_bright/fram0084.jpg" # ex3
-    # path_to_img = "/home/mwaltz/Sleepiness_Outdated/train/subject_0022_dimmed/sleeping/fram2139.jpg" # ex4
-
-    test_folder = Path("pictures/e2e_dataset/test")
-    
-    # Take 250 images from the "awake" and "sleeping" subfolders
-    for i, filename in enumerate(os.listdir(test_folder / "awake")):
-        print(i)
-        if i == 100:
-            break
-        path_to_img = test_folder / "awake" / filename
-        print(classify_img(path_to_img      = str(path_to_img), 
-                           face_model       = face_model, 
-                           eye_model        = eye_model, 
-                           clustering_model = None,
-                           eye_classifier   = eye_classifier,
-                           hand_model       = hand_model,
-                           viz = True))
-    for i, filename in enumerate(os.listdir(test_folder / "sleeping")):
-        if i == 100:
-            break
-        path_to_img = test_folder / "sleeping" / filename
-
-        print(classify_img(path_to_img      = str(path_to_img), 
-                            face_model       = face_model, 
-                            eye_model        = eye_model, 
-                            clustering_model = None,
-                            eye_classifier   = eye_classifier,
-                            hand_model       = hand_model,
-                            viz = True))
-    #main(img_folder="/home/mwaltz/train_awake/subject_0019_bright",
-    #     face_model=face_model, eye_model=eye_model, clustering_model=clustering_model, hand_model=hand_model)
