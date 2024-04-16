@@ -12,7 +12,7 @@ class FFNNEmptyfier(nn.Module):
     def __init__(self):
         super(FFNNEmptyfier, self).__init__()
         self.fc1 = nn.Linear(3 * 100 * 116, 512)  # Image size: 100x116
-        self.fc2 = nn.Linear(512, 2)  # Output: 2 classes (empty, occupied)
+        self.fc2 = nn.Linear(512, 1)  # Output: 1 value (empty or occupied)
 
     def forward(self, x):
         x = x.view(-1, 3 * 100 * 116)  # Image size: 100x116
@@ -31,10 +31,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = FFNNEmptyfier().to(device)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     # Train the model
-    epochs = 5
+    epochs = 15
     steps = 0
     running_loss = 0
     print_every = 500
@@ -51,7 +51,11 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             
             outputs = model.forward(inputs)
-            loss = criterion(outputs, labels)
+            
+            # Reduce output to 1 dimension
+            outputs = outputs.view(-1)
+            
+            loss = criterion(outputs.to(torch.float), labels.to(torch.float))
             loss.backward()
             optimizer.step()
             
@@ -69,7 +73,8 @@ if __name__ == "__main__":
                             break
                         inputs, labels = inputs.to(device), labels.to(device)
                         outputs = model(inputs)
-                        batch_loss = criterion(outputs, labels)
+                        output = outputs.view(-1)
+                        batch_loss = criterion(outputs.to(torch.float), labels.to(torch.float))
                         
                         test_loss += batch_loss.item()
                         
