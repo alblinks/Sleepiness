@@ -14,6 +14,20 @@ class PassengerState(Enum):
     def __str__(self):
         return self.name
 
+    def from_int(i: int) -> 'PassengerState':
+        """
+        Convert an integer to the corresponding
+        PassengerState.
+        """
+        if i == 0:
+            return PassengerState.AWAKE
+        elif i == 1:
+            return PassengerState.NOTTHERE
+        elif i == 2:
+            return PassengerState.SLEEPING
+        else:
+            raise ValueError(f"Invalid integer value {i} for PassengerState.")
+
 class ReducedPassengerState(Enum):
     """
     Reduced Enum class for the state 
