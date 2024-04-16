@@ -17,11 +17,6 @@ from sleepiness.end2end.weights import __path__ as e2eWeights
 from sleepiness.empty_seat.CNN.weights import __path__ as emptyWeightsCNN
 from sleepiness.empty_seat.FFNN.weights import __path__ as emptyWeightsFFNN
 
-# Load hand, eye and face modules
-import sleepiness.hand as hand
-import sleepiness.eye as eye
-import sleepiness.face as face
-
 # Import PassengerState
 from sleepiness.utility.pstate import (
     reduce_state, ReducedPassengerState,
@@ -35,6 +30,7 @@ from sleepiness.empty_seat.pixdiff import (
     __path__ as pixdiffPath , preprocess
 )
 import sleepiness.test.utils as tutils
+from sleepiness.test.aggregators import LabelAggregator
 from sleepiness.utility.logger import logger
 
 class EvalClassifier(torch.nn.Module):
@@ -75,16 +71,16 @@ class EvalClassifier(torch.nn.Module):
         """
         raise NotImplementedError
     
-    @abstractmethod
     def print_scores(self,
                      all_predictions: Tensor, 
                      all_labels: Tensor,
-                     class_names: list[str]):
+                     class_names: list[str],
+                     aggregator: LabelAggregator | None = None):
         """
         Print the accuracy, precision, recall, and F1 score.
         """
         all_predictions = torch.tensor(all_predictions)
-        all_labels = torch.tensor(all_labels)
+        all_labels = torch.tensor(all_labels)     
         tutils.MetricsCollector(
             self, all_predictions, all_labels, class_names
         ).summary()
@@ -285,7 +281,7 @@ class EmptyfierPixDiff(EvalClassifier):
         
         self.print_scores(all_predictions, all_labels, class_names)
                     
-class ReducedFullPipeline(EvalClassifier):
+class ReducedPipeline(EvalClassifier):
     """
     Reduced pipeline model:
     
@@ -322,9 +318,15 @@ class ReducedFullPipeline(EvalClassifier):
     def evaluate(self,
                 test_loader: DataLoader,
                 device: torch.device,
-                n_samples: int = 1000):
+                n_samples: int = 1000,
+                aggregator: LabelAggregator | None = None):
         """
         Evaluate the model on the test dataset.
+        
+        If aggregator is provided, the model is evaluated
+        assuming time-series data from the loader. 
+        Therefore, shuffling is disabled.
+        
         """
         logger.warning(
             "This model has multiple nets. "
@@ -342,22 +344,27 @@ class ReducedFullPipeline(EvalClassifier):
         all_labels = []
         cbatch = 0
         imgs = test_loader.dataset.imgs.copy()
-        shuffle(imgs)
+        if aggregator is None:
+            shuffle(imgs)
         for idx, (path_to_img, label) in enumerate(imgs):
             if idx == n_samples:
                 break
                 
             # Classify the image
-            state = self.model(path_to_img=path_to_img)
-            
-            # Coerce to ReducedPassengerState
+            state = self.model(path_to_img)
             state = reduce_state(state)
+            # Coerce to ReducedPassengerState
             if state is ReducedPassengerState.NOTAVAILABLE:
                 logger.warning(
                     f"Image {path_to_img} is classified as NOT_THERE. "
                     "Skipping in reduced pipeline."
                 )
                 continue
+            
+            # Aggregate state if aggregator is provided
+            if aggregator is not None:
+                aggregator.add(state)
+                state = aggregator.state
             
             # Classify state
             if state is ReducedPassengerState.AWAKE:
@@ -374,9 +381,11 @@ class ReducedFullPipeline(EvalClassifier):
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
 
-        self.print_scores(all_predictions, all_labels, class_names)
+        self.print_scores(
+            all_predictions, all_labels, class_names , aggregator
+        )
 
-class FullPipeline(ReducedFullPipeline):
+class FullPipeline(ReducedPipeline):
     """
     Full pipeline model:
     
@@ -388,7 +397,8 @@ class FullPipeline(ReducedFullPipeline):
     def evaluate(self,
                 test_loader: DataLoader,
                 device: torch.device,
-                n_samples: int = 1000):
+                n_samples: int = 1000,
+                aggregator: LabelAggregator | None = None):
         """
         Evaluate the model on the test dataset.
         """
@@ -408,13 +418,19 @@ class FullPipeline(ReducedFullPipeline):
         all_labels = []
         cbatch = 0
         imgs = test_loader.dataset.imgs.copy()
-        shuffle(imgs)
+        if aggregator is None:
+            shuffle(imgs)
         for idx, (path_to_img, label) in enumerate(imgs):
             if idx == n_samples:
                 break
                 
             # Classify the image
-            state: PassengerState = self.model(path_to_img=path_to_img)
+            state: PassengerState = self.model(path_to_img)
+
+            # Aggregate state if aggregator is provided
+            if aggregator is not None:
+                aggregator.add(state)
+                state = aggregator.state
             
             prediction = state.value
             all_predictions.append(prediction)
@@ -426,9 +442,11 @@ class FullPipeline(ReducedFullPipeline):
         # Calculate class-wise precision, recall, and F1 score
         class_names = test_loader.dataset.classes
     
-        self.print_scores(all_predictions, all_labels, class_names)
+        self.print_scores(
+            all_predictions, all_labels, class_names, aggregator
+        )
         
-class NoEyesReducedPipeline(ReducedFullPipeline):
+class NoEyesReducedPipeline(ReducedPipeline):
     """
     Reduced pipeline model:
     
