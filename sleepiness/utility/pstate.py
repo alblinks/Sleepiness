@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import Enum
 
 class PassengerState(Enum):
@@ -14,7 +15,7 @@ class PassengerState(Enum):
     def __str__(self):
         return self.name
 
-    def from_int(i: int) -> 'PassengerState':
+    def from_int(i: int) -> PassengerState:
         """
         Convert an integer to the corresponding
         PassengerState.
@@ -27,6 +28,21 @@ class PassengerState(Enum):
             return PassengerState.SLEEPING
         else:
             raise ValueError(f"Invalid integer value {i} for PassengerState.")
+
+    def from_str(s: str) -> PassengerState:
+        """
+        Convert a string to the corresponding
+        PassengerState.
+        """
+        s = s.upper()
+        if s == "AWAKE":
+            return PassengerState.AWAKE
+        elif s == "NOTTHERE":
+            return PassengerState.NOTTHERE
+        elif s == "SLEEPING":
+            return PassengerState.SLEEPING
+        else:
+            raise ValueError(f"Invalid string value {s} for PassengerState.")
 
 class ReducedPassengerState(Enum):
     """
@@ -47,6 +63,31 @@ class ReducedPassengerState(Enum):
     
     def __str__(self):
         return self.name
+    
+    def from_int(i: int) -> ReducedPassengerState:
+        """
+        Convert an integer to the corresponding
+        ReducedPassengerState.
+        """
+        if i == 0:
+            return ReducedPassengerState.AWAKE
+        elif i == 1:
+            return ReducedPassengerState.SLEEPING
+        else:
+            raise ValueError(f"Invalid integer value {i} for ReducedPassengerState.")
+        
+    def from_str(s: str) -> ReducedPassengerState:
+        """
+        Convert a string to the corresponding
+        ReducedPassengerState.
+        """
+        s = s.upper()
+        if s == "AWAKE":
+            return ReducedPassengerState.AWAKE
+        elif s == "SLEEPING":
+            return ReducedPassengerState.SLEEPING
+        else:
+            raise ValueError(f"Invalid string value {s} for ReducedPassengerState.")
 
 # Transform the PassengerState to a ReducedPassengerState
 def reduce_state(state: PassengerState) -> ReducedPassengerState:
