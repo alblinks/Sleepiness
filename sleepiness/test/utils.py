@@ -1,11 +1,44 @@
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from sleepiness.utility.misc import Loader
-from sleepiness import logger
+from sleepiness.test.aggregators import LabelAggregator
+from sleepiness import logger, PassengerState, ReducedPassengerState
 from pathlib import Path
 from sklearn.metrics import (
     confusion_matrix as _confusion_matrix, ConfusionMatrixDisplay
 )
+
+class TimeSeriesDataLoader:
+    """
+    A minimal Time Series DataLoader 
+    class to iterate over image 
+    files in a given folder.
+    
+    The images in the folder are assumed
+    to appear in a chronological order.
+    No sorting or shuffling is done.
+    
+    This class offers minimal functionality
+    and is intended to be used as a fallback
+    for the torchvision DataLoader, if time
+    series data is to be loaded.
+    """
+    image_formats = [".jpg", ".jpeg", ".png"]
+    class _MiniDataset:
+        def __init__(self, folder: str):
+            # Get all image files in the folder
+            self.pictures = list(Path(folder).iterdir())
+            for pic in self.pictures:
+                if pic.suffix not in TimeSeriesDataLoader.image_formats:
+                    self.pictures.remove(pic)
+
+            class_label = ReducedPassengerState.from_str(folder.split("/")[-1])
+            self.imgs = [(str(img), class_label.value) for img in self.pictures]
+            self.classes = [class_label.name]
+    
+    def __init__(self, folder: str):
+        self.dataset = self._MiniDataset(folder)
 
 def with_loader(func):
     """
@@ -91,17 +124,22 @@ class MetricsCollector:
                  model_class: object,
                  all_outputs: torch.Tensor, 
                  all_labels: torch.Tensor,
-                 class_names: list[str]):
+                 class_names: list[str],
+                 aggregator: LabelAggregator = None,
+                 reduced: bool = False):
         self.model_class = model_class
         self.outputs = all_outputs
         self.labels = all_labels
         self.class_names = class_names
+        self.aggregator = aggregator
+        self.reduced = reduced
         
         # Calculate accuracy
         self._accuracy = (self.outputs == self.labels).sum() / len(self.outputs)
         
         # Label map for class names
-        self.label_map = {name: i for i, name in enumerate(sorted(class_names))}
+        ps = PassengerState if not reduced else ReducedPassengerState
+        self.label_map = {p.name: p.value for p in ps}
         
         # Printer for pretty metrics
         self.printer = MetricsPrinter()
@@ -110,11 +148,10 @@ class MetricsCollector:
         self._precision = None
         self._recall = None
 
-        # Generate "confmat" folder if it doesn't exist
-        self._path = Path("confmat")
+        # Generate "plots" folder if it doesn't exist
+        self._path = Path("plots")
         if not self._path.exists():
             self._path.mkdir()
-        
         
         # Check input arrays
         if not (isinstance(all_outputs,list) and isinstance(all_labels,list))\
@@ -134,7 +171,10 @@ class MetricsCollector:
         recall, precision, and F1 score for each class.
         """
         self.printable_summary()
-        self.confusion_matrix()
+        if self.aggregator is None:
+            self.confusion_matrix()
+        if self.aggregator is not None:
+            self.timeline()
         pass
 
     def printable_summary(self):
@@ -152,6 +192,49 @@ class MetricsCollector:
             )
         for line in self.printer.lines:
             print(line)
+            
+    def timeline(self):
+        """
+        Plots a timeline of the aggregated labels 
+        and the raw labels over time.
+        """
+        ltf = [l.value for l in self.aggregator._all_labels]
+        
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax: plt.Axes
+        ax.scatter(
+            np.arange(len(ltf)),
+            ltf, 
+            label="Raw labels", 
+            marker="x",
+            s=10,
+            color="#c1121f"
+        )
+        
+        # The aggregated labels are the normal output, 
+        # because if the test run was done using the
+        # aggregator, the labels are already aggregated.
+        ax.plot(self.outputs, label="Aggregated labels", color="#003049")
+        
+        # Plot the true labels
+        ax.plot(self.labels, label="True labels", color="#ffb703")
+        
+        # Set the y axis to the PassengerState enum values
+        if not self.reduced:
+            ax.set_yticks([0, 1, 2])
+            ax.set_yticklabels([l.name for l in PassengerState])
+        else:
+            _r = ReducedPassengerState
+            ax.set_yticks([0, 1])
+            ax.set_yticklabels([l.name for l in [_r.AWAKE, _r.SLEEPING]])
+        
+        ax.set_xlabel("Frame / Time")
+        ax.set_ylabel("Label")
+        
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig(self._path / f"timeline_{type(self.model_class).__name__}.png", dpi=300)
+        
         
     def confusion_matrix(self):
         """
@@ -183,7 +266,7 @@ class MetricsCollector:
         true_positives = (self.outputs == self.class_index) & (self.labels == self.class_index)
         actual_positives = (self.labels == self.class_index)
         if actual_positives.sum() == 0:
-            print(f"No actual positives for class {self.class_index}. Returning 0.0.")
+            logger.warning(f"No actual positives for class {self.class_index}. Returning 0.0.")
             self._recall = 0
             return 0
         recall = true_positives.sum() / actual_positives.sum()
@@ -197,7 +280,7 @@ class MetricsCollector:
         true_positives = (self.outputs == self.class_index) & (self.labels == self.class_index)
         predicted_positives = (self.outputs == self.class_index)
         if predicted_positives.sum() == 0:
-            print(f"No predicted positives for class {self.class_index}."
+            logger.waring(f"No predicted positives for class {self.class_index}."
                   " Returning 0.0.")
             self._recall = 0
             return 0
@@ -215,7 +298,10 @@ class MetricsCollector:
             self.recall()
             
         if self._precision == 0 and self._recall == 0:
-            print(f"No actual or predicted positives for class {self.class_index}. F1 Score is 0.0.")
+            logger.warning(
+                f"No actual or predicted positives for "
+                f"class {self.class_index}. F1 Score is 0.0."
+            )
             return 0
         
         prec = self._precision
