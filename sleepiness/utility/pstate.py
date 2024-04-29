@@ -59,7 +59,6 @@ class ReducedPassengerState(Enum):
     """
     AWAKE = 0
     SLEEPING = 1
-    NOTAVAILABLE = -1
     
     def __str__(self):
         return self.name
@@ -82,9 +81,9 @@ class ReducedPassengerState(Enum):
         ReducedPassengerState.
         """
         s = s.upper()
-        if s == "AWAKE":
+        if "AWAKE" in s:
             return ReducedPassengerState.AWAKE
-        elif s == "SLEEPING":
+        elif "SLEEPING" in s:
             return ReducedPassengerState.SLEEPING
         else:
             raise ValueError(f"Invalid string value {s} for ReducedPassengerState.")
@@ -99,4 +98,4 @@ def reduce_state(state: PassengerState) -> ReducedPassengerState:
         return ReducedPassengerState.AWAKE
     elif state == PassengerState.SLEEPING:
         return ReducedPassengerState.SLEEPING
-    else: return ReducedPassengerState.NOTAVAILABLE
+    else: return None
