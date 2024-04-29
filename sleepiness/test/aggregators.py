@@ -1,4 +1,4 @@
-from typing import Callable
+from __future__ import annotations
 from collections import deque
 from abc import ABC, abstractmethod
 from sleepiness import PassengerState, ReducedPassengerState
@@ -9,17 +9,16 @@ class LabelAggregator(ABC):
     Subclasses should implement the `aggregate` method,
     which takes a PassengerState and adds it    
     """
-    SPAN = 10 # Number of labels to aggregate
     
-    def __init__(self):
-        self.labels = deque(maxlen=self.SPAN)
+    def __init__(self, horizon: int = 10):
+        self.labels = deque(maxlen=horizon)
         self._all_labels: list[PassengerState] | list[ReducedPassengerState] = []
         
     def add(self, label: PassengerState) -> None:
         """
         Add a label to the aggregator.
         """
-        assert isinstance(label, PassengerState), "Invalid label"
+        assert isinstance(label, (PassengerState,ReducedPassengerState)), "Invalid label"
         self.labels.append(label)
         self._all_labels.append(label)
     
