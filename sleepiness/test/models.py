@@ -75,14 +75,15 @@ class EvalClassifier(torch.nn.Module):
                      all_predictions: Tensor, 
                      all_labels: Tensor,
                      class_names: list[str],
-                     aggregator: LabelAggregator | None = None):
+                     aggregator: LabelAggregator | None = None,
+                     reduced: bool = False):
         """
         Print the accuracy, precision, recall, and F1 score.
         """
         all_predictions = torch.tensor(all_predictions)
         all_labels = torch.tensor(all_labels)     
         tutils.MetricsCollector(
-            self, all_predictions, all_labels, class_names
+            self, all_predictions, all_labels, class_names, aggregator, reduced
         ).summary()
     
     @tutils.with_loader
@@ -156,40 +157,6 @@ class SleepinessE2E(EvalClassifier):
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
 
-class EmptyfierCNN(EvalClassifier):
-    """
-    Class for the empty seat detection model.
-    """
-    def __init__(self):
-        super().__init__()
-    
-    def load_model(self):
-        """
-        Load the pre-trained model.
-        """
-        self.model: torch.nn.Module = torch.load(f"{emptyWeightsCNN[0]}/empty_seat_epoch_5.pt")
-        return self
-        
-    def forward(self, x: Tensor) -> Tensor:
-        return self.model(x)
-    
-class EmptyfierFFNN(EvalClassifier):
-    """
-    Class for the empty seat detection model.
-    """
-    def __init__(self):
-        super().__init__()
-    
-    def load_model(self):
-        """
-        Load the pre-trained model.
-        """
-        self.model: torch.nn.Module = torch.load(f"{emptyWeightsFFNN[0]}/empty_seat_epoch_5.pt")
-        return self
-        
-    def forward(self, x: Tensor) -> Tensor:
-        return self.model(x)
-    
 class EmptyfierPixDiff(EvalClassifier):
     """
     Class for the empty seat detection model
@@ -281,12 +248,12 @@ class EmptyfierPixDiff(EvalClassifier):
         
         self.print_scores(all_predictions, all_labels, class_names)
                     
-class ReducedPipeline(EvalClassifier):
+class FullPipeline(EvalClassifier):
     """
-    Reduced pipeline model:
+    Full pipeline model:
     
-    Here, we only classify AWAKE and SLEEPING states.
-    NOTTHERE is not considered.
+    Here, we classify all three states:
+    AWAKE, SLEEPING, and NOT_THERE.
     """
     def __init__(self, 
                  eye_model_confidence: float = 0.2,
@@ -313,85 +280,6 @@ class ReducedPipeline(EvalClassifier):
             "The full pipeline model does not "
             "have a single forward pass."
         )
-    
-    @tutils.with_loader
-    def evaluate(self,
-                test_loader: DataLoader,
-                device: torch.device,
-                n_samples: int = 1000,
-                aggregator: LabelAggregator | None = None):
-        """
-        Evaluate the model on the test dataset.
-        
-        If aggregator is provided, the model is evaluated
-        assuming time-series data from the loader. 
-        Therefore, shuffling is disabled.
-        
-        """
-        logger.warning(
-            "This model has multiple nets. "
-            "`device` will be ignored."
-        )
-        logger.warning(
-            "Model uses raw pictures. All transforms "
-            "given by the test loader are ignored."
-        )
-        del device
-        
-        correct = 0
-        total = 0
-        all_predictions = []
-        all_labels = []
-        cbatch = 0
-        imgs = test_loader.dataset.imgs.copy()
-        if aggregator is None:
-            shuffle(imgs)
-        for idx, (path_to_img, label) in enumerate(imgs):
-            if idx == n_samples:
-                break
-                
-            # Classify the image
-            state = self.model(path_to_img)
-            state = reduce_state(state)
-            # Coerce to ReducedPassengerState
-            if state is ReducedPassengerState.NOTAVAILABLE:
-                logger.warning(
-                    f"Image {path_to_img} is classified as NOT_THERE. "
-                    "Skipping in reduced pipeline."
-                )
-                continue
-            
-            # Aggregate state if aggregator is provided
-            if aggregator is not None:
-                aggregator.add(state)
-                state = aggregator.state
-            
-            # Classify state
-            if state is ReducedPassengerState.AWAKE:
-                prediction = ReducedPassengerState.AWAKE.value
-                all_predictions.append(prediction)
-            elif state is ReducedPassengerState.SLEEPING:
-                prediction = ReducedPassengerState.SLEEPING.value
-                all_predictions.append(prediction)
-            all_labels.append(label)
-            total += 1
-            correct += int(prediction == label)
-            cbatch += 1
-                
-        # Calculate class-wise precision, recall, and F1 score
-        class_names = test_loader.dataset.classes
-
-        self.print_scores(
-            all_predictions, all_labels, class_names , aggregator
-        )
-
-class FullPipeline(ReducedPipeline):
-    """
-    Full pipeline model:
-    
-    Here, we classify all three states:
-    AWAKE, SLEEPING, and NOT_THERE.
-    """
     
     @tutils.with_loader
     def evaluate(self,
@@ -443,25 +331,82 @@ class FullPipeline(ReducedPipeline):
         class_names = test_loader.dataset.classes
     
         self.print_scores(
-            all_predictions, all_labels, class_names, aggregator
+            all_predictions, all_labels, class_names, aggregator, reduced=False
         )
-        
-class NoEyesReducedPipeline(ReducedPipeline):
+
+class ReducedPipeline(FullPipeline):
     """
     Reduced pipeline model:
     
     Here, we only classify AWAKE and SLEEPING states.
     NOTTHERE is not considered.
     """
-    def __init__(self):
-        pass
 
-    
-    def load_model(self):
+    @tutils.with_loader
+    def evaluate(self,
+                test_loader: DataLoader,
+                device: torch.device,
+                n_samples: int = 1000,
+                aggregator: LabelAggregator | None = None):
         """
-        Load the pre-trained model.
-        """
-        pipeline = pipelines.NoEyePipeline()
-        self.model = pipeline.classify
+        Evaluate the model on the test dataset.
         
-        return self
+        If aggregator is provided, the model is evaluated
+        assuming time-series data from the loader. 
+        Therefore, shuffling is disabled.
+        
+        """
+        logger.warning(
+            "This model has multiple nets. "
+            "`device` will be ignored."
+        )
+        logger.warning(
+            "Model uses raw pictures. All transforms "
+            "given by the test loader are ignored."
+        )
+        del device
+        
+        total = 0
+        all_predictions = []
+        all_labels = []
+        cbatch = 0
+        imgs = test_loader.dataset.imgs.copy()
+        if aggregator is None:
+            shuffle(imgs)
+        for idx, (path_to_img, label) in enumerate(imgs):
+            if idx == n_samples:
+                break
+                
+            # Classify the image
+            state = self.model(path_to_img)
+            state = reduce_state(state)
+            # Coerce to ReducedPassengerState
+            if state is None:
+                logger.warning(
+                    f"Image {path_to_img} is classified as NOT_THERE. "
+                    "Skipping in reduced pipeline."
+                )
+                continue
+            
+            # Aggregate state if aggregator is provided
+            if aggregator is not None:
+                aggregator.add(state)
+                state = aggregator.state
+            
+            # Classify state
+            if state is ReducedPassengerState.AWAKE:
+                prediction = ReducedPassengerState.AWAKE.value
+                all_predictions.append(prediction)
+            elif state is ReducedPassengerState.SLEEPING:
+                prediction = ReducedPassengerState.SLEEPING.value
+                all_predictions.append(prediction)
+            all_labels.append(label)
+            total += 1
+            cbatch += 1
+                
+        # Calculate class-wise precision, recall, and F1 score
+        class_names = test_loader.dataset.classes
+
+        self.print_scores(
+            all_predictions, all_labels, class_names , aggregator, reduced=True
+        )
