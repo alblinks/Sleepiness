@@ -1,84 +1,58 @@
 import cv2
 import numpy as np
 import torch
+import base64
 import supervision as spv
 
-from torch import Tensor
-from torchvision import models
-from joblib import load
 from pathlib import Path
-from sklearn.pipeline import Pipeline
 from ultralytics import YOLO
 from sleepiness import __path__ as p
 
-from sleepiness.eye.FFNN.model import FFNN
-from sleepiness.eye.FFNN.weights import __path__ as ffnn_WeightPath
 from sleepiness.eye.CNN.model import CustomCNN
 from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
+from sleepiness.utility.logger import logger
+from sleepiness.utility.misc import download_file_with_progress
 
+CLP = """aHR0cHM6Ly93d3cuZHJvcGJ
+veC5jb20vc2NsL2ZpL2FxNzUyZXBzOHU
+5bXFoZ3NyaTFsai9leWVfY2xhc3NpZml
+lcl9jbm4ucHQ/cmxrZXk9dTBzcTBqamt
+5MjE0ZnFnc3YzZ2Z5ZDk1cCZzdD10YnV
+sYTJ1MSZkbD0x"""
+
+DP = """aHR0cHM6Ly93d3cuZHJvcGJve
+C5jb20vc2NsL2ZpL3h4c29wbTE5cjdnO
+WNmYjIyZTBubC9leWVfeW9sb3Y4bi5wd
+D9ybGtleT1tZDRuNXBpcWpucmsxNWw5a
+GdncmpoZ3JhJnN0PTlvcnZvajduJmRsP
+TE="""
 
 def load_model() -> YOLO:
     """Loads and returns the eye model."""
 
-    try:
-        model_path = Path(p[0]) / "eye" / "eye_yolov8n.pt"
-        eye_model = YOLO(model_path)
-    except:
-        raise FileNotFoundError(f"Error: Could not load the eye model.")
+    model_path = Path(p[0]) / "eye" / "eye_yolov8n.pt"
+    if not model_path.exists():
+        logger.info("Eye model not found. Downloading...")
+        download_file_with_progress(
+            base64.b64decode(DP).decode(), model_path,
+            "Downloading the eye detection model..."
+        )
+    eye_model = YOLO(model_path)
 
     print("Eye model loaded.")
     return eye_model
 
-def load_clustering_model() -> Pipeline:
-    """Loads and returns the clustering model for open-eye detection."""
-
-    try:
-        model_path = Path(p[0]) / "eye" / "eye_clustering_model.joblib"
-        clustering_model = load(model_path)
-    except:
-        raise FileNotFoundError(f"Error: Could not load the clustering model.")
-
-    print("Clustering model loaded.")
-    return clustering_model
-
-def load_classifier_resnet() -> models.ResNet:
-    """Loads and returns the ResNet18 model for open-eye detection."""
-
-    try:
-        model_path = Path(p[0]) / "eye" / "eye_classifier.pt"
-        model: models.ResNet = torch.load(model_path)
-    except:
-        raise FileNotFoundError(f"Error: Could not load the eye classification model.")
-
-    print("Eye classification model loaded.")
-    return model
-
-def load_classifier_ffnn() -> torch.nn.Module:
-    """Loads and returns the FFNN model for open-eye detection."""
-
-    try:
-        model_path = Path(ffnn_WeightPath[0]) / "eye_epoch_26.pt"
-        model: torch.nn.Module = torch.load(model_path,map_location=torch.device('cpu'))
-    except Exception as e:
-        raise FileNotFoundError(
-            f"Error: Could not load the eye classification model.",e
-        )
-
-    print("Feed-Forward eye classification model loaded.")
-    model.eval()
-    model.to("cpu")
-    return model
-
 def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
-
-    try:
-        model_path = Path(cnn_WeightPath[0]) / "eye_epoch_13.pt"
-        model: torch.nn.Module = torch.load(model_path, map_location=torch.device('cpu'))
-    except Exception as e:
-        raise FileNotFoundError(
-            f"Error: Could not load the eye classification model.", e
+    
+    model_path = Path(cnn_WeightPath[0]) / "eye_classifier_cnn.pt"
+    if not model_path.exists():
+        logger.info("Eye classification model not found. Downloading...")
+        download_file_with_progress(
+            base64.b64decode(CLP).decode(), model_path,
+            "Downloading the eye classification model..."
         )
+    model: torch.nn.Module = torch.load(model_path, map_location=torch.device('cpu'))
 
     print("Convolutional eye classification model loaded.")
     model.eval()

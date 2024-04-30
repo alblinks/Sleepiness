@@ -1,17 +1,34 @@
 """
 Hand Landmarks detection using google's mediapipe library
 """
+from pathlib import Path
+import base64
 import cv2
 import mediapipe as mp
 import numpy as np
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from sleepiness import __path__ as assetPath
+from sleepiness.utility.logger import logger
+from sleepiness.utility.misc import download_file_with_progress
+
+HMP = """aHR0cHM6Ly93d3cuZHJvcGJveC5jb20
+vc2NsL2ZpLzZ4Z244Z2diMWMxczF0ZHI2cmYwaC9
+oYW5kX2xhbmRtYXJrZXIudGFzaz9ybGtleT11NXp
+senBjMm11cDdwOGwwZDUwNmF6bG51JnN0PXVqdGQ
+yYmZwJmRsPTE="""
 
 def load_model(hand_model_confidence=0.15):
     """
     Load google's mediapipe hand landmarks model
     """
+    model_path = f'{assetPath[0]}/hand/hand_landmarker.task'
+    if not Path(model_path).exists():
+        logger.info("Hand landmarks model not found. Downloading...")
+        download_file_with_progress(
+            base64.b64decode(HMP).decode(), model_path,
+            "Downloading the hand landmarks model..."
+        )
     base_options = python.BaseOptions(
         model_asset_path=f'{assetPath[0]}/hand/hand_landmarker.task')
     options = vision.HandLandmarkerOptions(
