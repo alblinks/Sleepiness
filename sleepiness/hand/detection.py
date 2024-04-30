@@ -32,6 +32,13 @@ def draw_landmarks_on_image(image, result):
                      (int(l2.x*image.shape[1]), int(l2.y*image.shape[0])), (57, 17, 122), 2)
     return annotated_image
 
+def get_bbox_from_landmarks(landmarks) -> list[float]:
+    bboxes = []
+    for hand_landmark in landmarks:
+        x,y = np.array([(l.x, l.y) for l in hand_landmark]).T
+        bboxes.append([min(x), max(x), min(y), max(y)])
+    return bboxes
+
 def detect_from_numpy_array(detector, image: np.ndarray):
     image = image.astype(np.uint8)
     image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
