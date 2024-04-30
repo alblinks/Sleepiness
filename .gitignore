@@ -22,3 +22,6 @@ plots/
 *.jpg
 *.jpeg
 *.png
+
+# Google mediapipe task files
+*.task
