@@ -4,9 +4,6 @@ contains a sleeping person, or contains a person being awake.
 
 Authors: Martin Waltz, Niklas Paulig
 """
-import os
-from pathlib import Path
-from typing import Callable
 import cv2
 import pickle
 import numpy as np
@@ -15,19 +12,14 @@ import uuid
 
 from PIL import Image
 from abc import ABC, abstractmethod
-from torchvision import models
-from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
 import sleepiness.hand.detection as hand
 
 from sleepiness import PassengerState
-from sleepiness.eye.CNN.model import CustomCNN
-from sleepiness.face.smallCNN.transforms import val_transform as face_transform
 
 import sleepiness.face.yoloface as facedetect
-import sleepiness.face.smallCNN as smallface
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
