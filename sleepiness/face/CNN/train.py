@@ -9,13 +9,13 @@ from sleepiness.face.CNN.transforms import train_transform as transform
 from sleepiness.face.CNN.weights import __path__ as customcnn_WeightPath
 from sleepiness.face.CNN.model import CustomCNN
 
-
+batch_size = 128
 # Data loading
 train_dataset = torchvision.datasets.ImageFolder(root="pictures/notcorrect_faces/train", transform=transform)
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
 val_dataset = torchvision.datasets.ImageFolder(root="pictures/notcorrect_faces/test", transform=transform)
-val_loader = DataLoader(val_dataset, batch_size=128, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
 model = CustomCNN()
 # Set the device
@@ -87,7 +87,7 @@ for epoch in range(epochs):
             accuracies.append(accuracy/valbreak)
 
             # Make plots
-            step_count = np.arange(0, (val_rounds+1)*print_every, print_every)
+            step_count = np.arange(0, (val_rounds+1)*print_every, print_every) * batch_size
             plt.plot(step_count,tr_loss, label='Training loss', color='#283618')
             plt.plot(step_count,val_loss, label='Validation loss', color='#bc6c25')
             plt.plot(step_count,accuracies, label='Validation accuracy', color='#f0a500')
