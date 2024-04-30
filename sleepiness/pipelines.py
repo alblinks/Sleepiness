@@ -20,7 +20,7 @@ from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
-from sleepiness.hand.detection import detect_from_numpy_array
+import sleepiness.hand.detection as hand
 
 from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
@@ -192,32 +192,44 @@ class FullPipeline(Pipeline):
 
     def transform_xxyy_for_cropped_img(self, 
                                        full_img : np.ndarray, 
-                                       xxyy : tuple, 
-                                       keep_horizontal : float = 1
+                                       cropped_img : np.ndarray,
+                                       xxyy : tuple
                                     )-> tuple[int,int,int,int]:
         """Computes the bounding box coordinates (xxyy) for the full image for a given bounding box (xxyy) of a cropped img.
         Cropping means keep only the middle 'keep_horizontal' percent of pixels of an image.
         
         Args:
             full_img: Full size image.
-            xxyy: Bounding box coordinates of the cropped image.
+            xxyy: Bounding box coordinates in percentage for the cropped image.
             keep_horizontal: Percentage of horizontal cropping.
         Returns:
             Bounding box coordinates for the full img.
         """
+        # Keep only 'keep_horizontal' percent of pixels of an image.
+        # This is to account for the fact that the hand detection model 
+        # used on cropped images
+        keep_horizontal = self.hand_model_crop[3] - self.hand_model_crop[2]
+        keep_vertical = self.hand_model_crop[1] - self.hand_model_crop[0]
+        
         # Img size
         full_height, full_width = full_img.shape[:2] 
+        cropped_height, cropped_width = cropped_img.shape[:2]
 
         # Unpack the bounding box coordinates
-        x_min, x_max, y_min, y_max = xxyy
+        px_min, px_max, py_min, py_max = xxyy
+        x_min = int(px_min * cropped_width)
+        x_max = int(px_max * cropped_width)
+        y_min = int(py_min * cropped_height)
+        y_max = int(py_max * cropped_height)
         
         # Calculate the horizontal and vertical offsets based on cropping percentages
         x_off = full_width * (1 - keep_horizontal) / 2
-        y_off = 0
+        y_off = full_height * (1 - keep_vertical) / 2
         return (int(x_min + x_off), int(x_max + x_off), int(y_min + y_off), int(y_max + y_off))
 
     def visualize(self, 
                   original_img : np.ndarray, 
+                  crop_img : np.ndarray,
                   face_xxyy : tuple, eyes_xxyy : list, 
                   hands_xxyy : list, label : str, 
                   text : str) -> None:
@@ -244,7 +256,7 @@ class FullPipeline(Pipeline):
         # Draw bounding boxes for hands
         for hand_xxyy in hands_xxyy:
             hand_xxyy = self.transform_xxyy_for_cropped_img(
-                full_img=original_img, xxyy=hand_xxyy
+                full_img=original_img, cropped_img=crop_img, xxyy=hand_xxyy
             )
             cv2.rectangle(
                 img_with_boxes, 
@@ -285,7 +297,7 @@ class FullPipeline(Pipeline):
 
     def classify(self,
                 img_or_path : str | np.ndarray, 
-                viz : bool = False) -> PassengerState:
+                viz : bool = True) -> PassengerState:
         """Processes the image. 
         Returns: 
             - PassengerState.AWAKE if the person is awake
@@ -305,7 +317,7 @@ class FullPipeline(Pipeline):
 
         # Default
         state = PassengerState.SLEEPING
-        s = ""
+        s = []
 
         # Read image
         if isinstance(img_or_path, str):
@@ -325,7 +337,7 @@ class FullPipeline(Pipeline):
             if not viz:
                 return state
         if viz:
-            s += "Seat is not empty.\n"
+            s.append("Seat is not empty.")
 
         # 2. Step: If someone is there, detect face and select the one with largest bounding box
         face_detected, faceImg, face_xxyy = facedetect.detect(
@@ -336,7 +348,7 @@ class FullPipeline(Pipeline):
         if face_detected:
 
             if viz:
-                s += "Face detected.\n"
+                s.append("Face detected.")
             eye_regions, eye_xxyy = eye.detect(
                 faceImg=faceImg, eye_model=self.eye_model, confidence=self.eye_model_confidence
             )
@@ -344,7 +356,7 @@ class FullPipeline(Pipeline):
             if len(eye_regions) > 0:
 
                 if viz:
-                    s += f"{len(eye_regions)} eye/s detected.\n"
+                    s.append(f"{len(eye_regions)} eye/s detected.")
 
                 eye_labels = self.open_eye_classify(
                     eye_regions=eye_regions, 
@@ -354,49 +366,50 @@ class FullPipeline(Pipeline):
                 if any(eye_labels):
             
                     if viz:
-                        s += f"{sum(eye_labels)} open. {len(eye_labels)-sum(eye_labels)} closed. \n"
+                        s.append(
+                            f"{sum(eye_labels)} open. "
+                            f"{len(eye_labels)-sum(eye_labels)} closed."
+                        )
                     state = PassengerState.AWAKE
                     if not viz:
                         return state
                 elif viz:
-                    s += "All eyes closed.\n"
+                    s.append("All eyes closed.")
 
             elif viz:
-                s += "No eyes detected.\n"
+                s.append("No eyes detected.")
         else:
             eye_xxyy = []
 
         # 4. Step: If no open-eyes are detected, cut image and look for hands
         croppedImg = crop_image(img, *self.hand_model_crop)
 
-        hand_detection = detect_from_numpy_array(self.hand_model,croppedImg)
-        hands_xxyy = []
+        hand_detection = hand.detect_from_numpy_array(self.hand_model,croppedImg)
         if hand_detection is not None:
             hands_detected = True
+            hands_xxyy = hand.get_bbox_from_landmarks(hand_detection.hand_landmarks)
         else: 
             hands_detected = False
-
-        # hands_detected, hands_xxyy = self.detect_hands(
-        #     img=croppedImg, hand_model=self.hand_model
-        # )
+            hands_xxyy = []
 
         if hands_detected:
             if viz:
-                s += "Hand/s detected in cropped image.\n"
+                s.append("Hand/s detected in cropped image.")
             state = PassengerState.AWAKE
             if not viz:
                 return state
         elif viz:
-            s += "No hands detected in cropped image.\n"
+            s.append("No hands detected in cropped image.")
         
         # 5. Step: If none of the above situations appear, we assume the person sleeps
         if viz:
             self.visualize(
                 original_img=img, 
+                crop_img=croppedImg,
                 face_xxyy=face_xxyy, 
                 eyes_xxyy=eye_xxyy, 
                 hands_xxyy=hands_xxyy, 
                 label=state.name.lower(), 
-                text=s
+                text="\n".join(s)
             )
         return state
