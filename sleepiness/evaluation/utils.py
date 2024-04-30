@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from sleepiness.utility.misc import Loader
-from sleepiness.test.aggregators import LabelAggregator
+from sleepiness.evaluation.aggregators import LabelAggregator
 from sleepiness import logger, PassengerState, ReducedPassengerState
 from pathlib import Path
 from sklearn.metrics import (

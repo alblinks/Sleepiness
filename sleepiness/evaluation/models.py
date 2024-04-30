@@ -29,8 +29,8 @@ import sleepiness.pipelines as pipelines
 from sleepiness.empty_seat.pixdiff import (
     __path__ as pixdiffPath , preprocess
 )
-import sleepiness.test.utils as tutils
-from sleepiness.test.aggregators import LabelAggregator
+import sleepiness.evaluation.utils as tutils
+from sleepiness.evaluation.aggregators import LabelAggregator
 from sleepiness.utility.logger import logger
 
 class EvalClassifier(torch.nn.Module):
