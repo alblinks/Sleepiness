@@ -257,10 +257,12 @@ class FullPipeline(EvalClassifier):
     """
     def __init__(self, 
                  eye_model_confidence: float = 0.2,
-                 hand_model_confidence: float = 0.5):
+                 hand_model_confidence: float = 0.15,
+                 hand_model_crop: list[float,float,float,float] = [0.25,0.75,0,0.8]):
         
         self.eye_model_confidence = eye_model_confidence
         self.hand_model_confidence = hand_model_confidence
+        self.hand_model_crop = hand_model_crop
         super().__init__()
     
     def load_model(self):
@@ -269,7 +271,8 @@ class FullPipeline(EvalClassifier):
         """
         pipeline = pipelines.FullPipeline(
             eye_model_confidence=self.eye_model_confidence,
-            hand_model_confidence=self.hand_model_confidence
+            hand_model_confidence=self.hand_model_confidence,
+            hand_model_crop=self.hand_model_crop
         )
         self.model = pipeline.classify
         

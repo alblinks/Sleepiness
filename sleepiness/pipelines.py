@@ -20,6 +20,8 @@ from ultralytics import YOLO
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
+from sleepiness.hand.detection import detect_from_numpy_array
+
 from sleepiness import PassengerState
 from sleepiness.eye.CNN.model import CustomCNN
 from sleepiness.face.smallCNN.transforms import val_transform as face_transform
@@ -39,6 +41,7 @@ with open(f"{pixdiff_path[0]}/avgmap.nparray", "rb") as f:
 def crop_vertically(img: np.ndarray) -> np.ndarray:
     """
     Crops the lower 20% of an image.
+    Seat cam is 40%.
     
     Args:
         img (np.ndarray): The input image.
@@ -47,12 +50,13 @@ def crop_vertically(img: np.ndarray) -> np.ndarray:
         np.ndarray: The cropped image.
     """
     height, width = img.shape[:2]  
-    cropped_height = int(height * 0.8)  
+    cropped_height = int(height * 0.6)  
     return img[:cropped_height, :]
 
 def crop_horizontally(img: np.ndarray) -> np.ndarray:
     """
     Keeps only the middle 50% of an image (horizontally).
+    Seat cam is 100%
     
     Args:
         image (PIL.Image): The input image.
@@ -60,11 +64,37 @@ def crop_horizontally(img: np.ndarray) -> np.ndarray:
     Returns:
         PIL.Image: The cropped image.
     """
+    return img
     height, width = img.shape[:2] 
     xmin = int(width * 0.25)
     xmax = int(width * 0.75)
     return img[:, xmin:xmax]
     
+def crop_image(img: np.ndarray, xmin: int, xmax: int, ymin: int, ymax: int) -> np.ndarray:
+    """
+    Crops an image based on the bounding box coordinates in percentage.
+    
+    Args:
+        img (np.ndarray): The input image.
+        xmin (int): The minimum x-coordinate.
+        xmax (int): The maximum x-coordinate.
+        ymin (int): The minimum y-coordinate.
+        ymax (int): The maximum y-coordinate.
+        
+    Example:
+        # Crop the center 50% of the image
+        crop_image(img, 0.25, 0.75, 0.25, 0.75)
+        
+    Returns:
+        np.ndarray: The cropped image.
+    """
+    
+    height, width = img.shape[:2] 
+    x_min = int(width * xmin)
+    x_max = int(width * xmax)
+    y_min = int(height * ymin)
+    y_max = int(height * ymax)
+    return img[y_min:y_max, x_min:x_max]
 
 class Pipeline(ABC):
     """
@@ -96,52 +126,28 @@ class FullPipeline(Pipeline):
 
     def __init__(self,
                  eye_model_confidence : float,
-                 hand_model_confidence : float):
+                 hand_model_confidence : float,
+                 hand_model_crop : list[float,float,float,float],):
         
+        """
+        Args:
+            eye_model_confidence: Confidence threshold for eye detection.
+            hand_model_confidence: Confidence threshold for hand detection.
+            hand_model_crop: Bounding box coordinates for cropping the image for hand detection
+                as [xmin, xmax, ymin, ymax] in percentage.
+        """
+        assert 0 <= eye_model_confidence <= 1, "Confidence must be between 0 and 1."
+        assert 0 <= hand_model_confidence <= 1, "Confidence must be between 0 and 1."
+        assert len(hand_model_crop) == 4 and all([0 <= x <= 1 for x in hand_model_crop]),\
+            "Bounding box must be in percentage."
+        
+        self.hand_model_crop = hand_model_crop
         self.face_model = facedetect.load_model()
         self.eye_model = eye.load_model()
         self.eye_classifier = eye.load_classifier_cnn()
         self.hand_model = hand.load_model(hand_model_confidence)
         
         self.eye_model_confidence = eye_model_confidence
-    
-    def detect_hands(self, img : np.ndarray, hand_model : hand.HandYOLO) -> tuple:
-        """Detects hands in an image.
-        
-        Returns tuple of bool and a list.
-        The bool is 'True' if at least one hand is detected with reasonable confidence.
-        The list contains tuples of (xmin, xmax, ymin, ymax) bounding boxes of the detected hands.
-        """ 
-        # Inference
-        width, height, inference_time, results = hand_model.inference(img)
-        
-        # How many hands should be shown
-        hand_count = len(results)
-
-        hand_xxyy = []
-        for r in results:
-            id, name, confidence, x, y, w, h = r
-            hand_xxyy.append((x, x+w, y, y+h))
-
-        # Testing: Display hands
-        #for detection in results[:hand_count]:
-        #    id, name, confidence, x, y, w, h = detection
-
-            # draw a bounding box rectangle and label on the image
-        #    color = (0, 255, 255)
-        #    cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
-        #    text = "%s (%s)" % (name, round(confidence, 2))
-        #    cv2.putText(img, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX,
-        #                0.5, color, 2)
-        #cv2.namedWindow("preview")
-        #cv2.imshow("preview", img)
-        #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-        #cv2.destroyAllWindows()
-
-        if hand_count == 0:
-            return False, hand_xxyy
-        else:
-            return True, hand_xxyy
 
     def open_eye_clustering(self, eye_regions : list, clustering_model : Pipeline) -> bool:
         """Classifies a list of eye regions (np.ndarrays) as open- or closed-eye 
@@ -187,7 +193,7 @@ class FullPipeline(Pipeline):
     def transform_xxyy_for_cropped_img(self, 
                                        full_img : np.ndarray, 
                                        xxyy : tuple, 
-                                       keep_horizontal : float = 0.5
+                                       keep_horizontal : float = 1
                                     )-> tuple[int,int,int,int]:
         """Computes the bounding box coordinates (xxyy) for the full image for a given bounding box (xxyy) of a cropped img.
         Cropping means keep only the middle 'keep_horizontal' percent of pixels of an image.
@@ -278,8 +284,8 @@ class FullPipeline(Pipeline):
         cv2.imwrite(output_file, combined_img)
 
     def classify(self,
-                    img_or_path : str | np.ndarray, 
-                    viz : bool = False) -> PassengerState:
+                img_or_path : str | np.ndarray, 
+                viz : bool = False) -> PassengerState:
         """Processes the image. 
         Returns: 
             - PassengerState.AWAKE if the person is awake
@@ -361,11 +367,18 @@ class FullPipeline(Pipeline):
             eye_xxyy = []
 
         # 4. Step: If no open-eyes are detected, cut image and look for hands
-        croppedImg = crop_horizontally(crop_vertically(img))
+        croppedImg = crop_image(img, *self.hand_model_crop)
 
-        hands_detected, hands_xxyy = self.detect_hands(
-            img=croppedImg, hand_model=self.hand_model
-        )
+        hand_detection = detect_from_numpy_array(self.hand_model,croppedImg)
+        hands_xxyy = []
+        if hand_detection is not None:
+            hands_detected = True
+        else: 
+            hands_detected = False
+
+        # hands_detected, hands_xxyy = self.detect_hands(
+        #     img=croppedImg, hand_model=self.hand_model
+        # )
 
         if hands_detected:
             if viz:
@@ -396,7 +409,7 @@ class NoEyePipeline(FullPipeline):
 
     def classify(self,
                 img_or_path : str | np.ndarray, 
-                viz : bool = True) -> PassengerState:
+                viz : bool = False) -> PassengerState:
         """Processes the image. 
         Returns: 
             - PassengerState.AWAKE if the person is awake
@@ -475,41 +488,3 @@ class NoEyePipeline(FullPipeline):
                 text=s
             )
         return state
-
-
-def main(img_folder : str, 
-         face_model : YOLO, 
-         eye_model : YOLO, 
-         hand_model : hand.HandYOLO
-         ) -> str:
-    
-    awake_cnt = 0
-    sleep_cnt = 0
-    empty_cnt = 0
-    N = 0
-
-    for i, filename in enumerate(os.listdir(img_folder)):
-        if i % 5 == 0:
-            print(f"{i} images classified.")
-
-        output = classify_img(path_to_img=img_folder + "/" + filename, 
-                              face_model=face_model, 
-                              eye_model=eye_model,
-                              hand_model=hand_model,
-                              viz=False)
-        assert output in ["awake", "sleeping", "not there"]
-
-        if output == "awake":
-            awake_cnt += 1
-        elif output == "sleeping":
-            sleep_cnt += 1
-        else:
-            empty_cnt += 1
-        N += 1
-
-        if i == 99:
-            break
-
-    print(f"Awake:    {awake_cnt} of {N} images.")
-    print(f"Sleeping: {sleep_cnt} of {N} images.")
-    print(f"Empty:    {empty_cnt} of {N} images.")
