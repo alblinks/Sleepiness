@@ -19,7 +19,7 @@ import sleepiness.hand.detection as hand
 
 from sleepiness import PassengerState
 
-import sleepiness.face.yoloface as facedetect
+import sleepiness.face as face
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
@@ -134,7 +134,7 @@ class FullPipeline(Pipeline):
             "Bounding box must be in percentage."
         
         self.hand_model_crop = hand_model_crop
-        self.face_model = facedetect.load_model()
+        self.face_model = face.load_model()
         self.eye_model = eye.load_model()
         self.eye_classifier = eye.load_classifier_cnn()
         self.hand_model = hand.load_model(hand_model_confidence)
@@ -332,7 +332,7 @@ class FullPipeline(Pipeline):
             s.append("Seat is not empty.")
 
         # 2. Step: If someone is there, detect face and select the one with largest bounding box
-        face_detected, faceImg, face_xxyy = facedetect.detect(
+        face_detected, faceImg, face_xxyy = face.detect(
             img=img, face_model=self.face_model, with_xyxy=True
         )
 
