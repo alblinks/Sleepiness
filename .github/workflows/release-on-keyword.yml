@@ -1,0 +1,38 @@
+name: Create Release on Keyword
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Check for "release" keyword in commit message
+        id: check_commit_message
+        run: |
+          # Retrieve the commit message of the latest commit
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Last commit message: $COMMIT_MSG"
+          # Check if the word "release" is in the commit message (case insensitive)
+          if echo "$COMMIT_MSG" | grep -iq "release"; then
+            echo "contains_release=true" >> $GITHUB_ENV
+          else
+            echo "contains_release=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create a new GitHub Release
+        if: env.contains_release == 'true'
+        uses: actions/create-release@v1
+        with:
+          tag_name: v$(date +%Y%m%d%H%M%S)
+          release_name: Automated Release - $(date +%Y%m%d%H%M%S)
+          body: |
+            This is an automated release.
+          draft: false
+          prerelease: false
