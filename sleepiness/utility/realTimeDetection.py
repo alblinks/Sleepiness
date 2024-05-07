@@ -1,5 +1,6 @@
 from collections import deque
 import cv2
+import os
 import sleepiness.pipelines as pipelines
 from sleepiness.evaluation.aggregators import LabelAggregator, MajorityVoting
 
@@ -9,8 +10,12 @@ def framewise_real_time_detection(model: pipelines.FullPipeline, draw_bbox: bool
     Real time classification for every frame from the camera.
     """
     # Access camera
-    cap = cv2.VideoCapture("/dev/video0")
-
+    # Check if on Windows
+    if os.name == 'nt':
+        cap = cv2.VideoCapture(0)
+    else:
+        cap = cv2.VideoCapture("/dev/video0")
+    
     crop_factors = model.hand_model_crop
 
     while cap.isOpened():
@@ -73,8 +78,13 @@ def aggregated_real_time_detection(model: pipelines.FullPipeline,
     Real time classification for every frame from the camera.
     """
     crop_factors = model.hand_model_crop
+
     # Access camera
-    cap = cv2.VideoCapture("/dev/video0")
+    if os.name == 'nt':
+        cap = cv2.VideoCapture(0)
+    else:
+        cap = cv2.VideoCapture("/dev/video0")
+
     while cap.isOpened():
 
         # Read current frame
