@@ -63,11 +63,6 @@ class SleepinessCLI:
         self.parser = parser
         self.args = parser.parse_args()
         
-        # Check if namespace is empty
-        if not all([self.args.version,self.args.r, self.args.path, self.args.cpath]):
-            parser.print_help()
-            sys.exit(1)
-        
         if hasattr(self.args, "path"):
             if self.args.path and self.args.cpath:
                 sys.exit(
