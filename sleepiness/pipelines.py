@@ -163,8 +163,9 @@ class FullPipeline(Pipeline):
         
         Returns 'True' if an open-eye is detected; False otherwise."""
         transform = transforms.Compose([
-            transforms.Resize((20,50)), # height, width
+            transforms.Resize((30,60)), # height, width
             transforms.ToTensor(),
+            eye.MaxMinScaling(),
         ])
         labels = []
         for r in eye_regions:
@@ -289,7 +290,8 @@ class FullPipeline(Pipeline):
 
     def classify(self,
                 img_or_path : str | np.ndarray, 
-                viz : bool = True) -> PassengerState:
+                viz : bool = False,
+                return_bbox: bool = False) -> PassengerState | tuple[PassengerState, list]:
         """Processes the image. 
         Returns: 
             - PassengerState.AWAKE if the person is awake
@@ -315,7 +317,7 @@ class FullPipeline(Pipeline):
         if isinstance(img_or_path, str):
             img = cv2.imread(img_or_path)
         else: img = img_or_path
-        assert img is not None, "Could not load the image."
+        assert img is not None, "Could not load the image: {}.".format(img_or_path)
 
         # 1. Step: Detect whether seat is empty
         # TODO: switch empty detection to cv2
@@ -327,7 +329,7 @@ class FullPipeline(Pipeline):
         if is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP):
             state = PassengerState.NOTTHERE
             if not viz:
-                return state
+                return (state, [[],[],[]]) if return_bbox else state
         if viz:
             s.append("Seat is not empty.")
 
@@ -364,7 +366,7 @@ class FullPipeline(Pipeline):
                         )
                     state = PassengerState.AWAKE
                     if not viz:
-                        return state
+                        return (state, [face_xxyy, eye_xxyy,[]]) if return_bbox else state
                 elif viz:
                     s.append("All eyes closed.")
 
@@ -389,7 +391,7 @@ class FullPipeline(Pipeline):
                 s.append("Hand/s detected in cropped image.")
             state = PassengerState.AWAKE
             if not viz:
-                return state
+                return (state, [face_xxyy, eye_xxyy, hands_xxyy]) if return_bbox else state
         elif viz:
             s.append("No hands detected in cropped image.")
         
@@ -404,4 +406,6 @@ class FullPipeline(Pipeline):
                 label=state.name.lower(), 
                 text="\n".join(s)
             )
+        if return_bbox:
+            return state, [face_xxyy, eye_xxyy, hands_xxyy]
         return state
