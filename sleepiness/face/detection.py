@@ -25,10 +25,8 @@ def load_model() -> YOLO:
             "Downloading the face detection model..."
         )
     face_model = YOLO(model_path)
-    # except:
-    #     raise FileNotFoundError("Error: Could not load the face model. Check the paths.")
 
-    print("Face model loaded.")
+    logger.info("Face model loaded.")
     return face_model
 
 def detect(img : np.ndarray, face_model : YOLO, with_xyxy : bool = False) -> tuple:
