@@ -166,6 +166,7 @@ class FullPipeline(Pipeline):
             transforms.Resize((30,60)), # height, width
             transforms.ToTensor(),
             eye.MaxMinScaling(),
+            eye.GreyScaling()
         ])
         labels = []
         for r in eye_regions:
