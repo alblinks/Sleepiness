@@ -13,12 +13,11 @@ from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
 from sleepiness.utility.logger import logger
 from sleepiness.utility.misc import download_file_with_progress
 
-CLP = """aHR0cHM6Ly93d3cuZHJvcGJ
-veC5jb20vc2NsL2ZpL2FxNzUyZXBzOHU
-5bXFoZ3NyaTFsai9leWVfY2xhc3NpZml
-lcl9jbm4ucHQ/cmxrZXk9dTBzcTBqamt
-5MjE0ZnFnc3YzZ2Z5ZDk1cCZzdD10YnV
-sYTJ1MSZkbD0x"""
+CLP = """aHR0cHM6Ly93d3cuZHJvcGJve
+C5jb20vc2NsL2ZpL3g0ZG05aGkzZzg2cDR
+iOHcycTB1by9leWVfY2xmX3NtLnB0P3Jsa
+2V5PWRzNTBraXVia2NvNHA4MXJ3ZWJ3ZDM
+zaXImc3Q9M2kxeWg0aTImZGw9MQ=="""
 
 DP = """aHR0cHM6Ly93d3cuZHJvcGJve
 C5jb20vc2NsL2ZpL3h4c29wbTE5cjdnO
@@ -26,6 +25,23 @@ WNmYjIyZTBubC9leWVfeW9sb3Y4bi5wd
 D9ybGtleT1tZDRuNXBpcWpucmsxNWw5a
 GdncmpoZ3JhJnN0PTlvcnZvajduJmRsP
 TE="""
+
+# Custom transform for Max-Min Scaling
+class MaxMinScaling(torch.nn.Module):
+    def __init__(self):
+        super(MaxMinScaling, self).__init__()
+
+    def forward(self, img):
+        # Ensure the image is a tensor (this should always be the case in this setup)
+        if not torch.is_tensor(img):
+            raise ValueError("MaxMinScaling expects a tensor input")
+
+        # Perform max-min scaling
+        min_val = torch.min(img)
+        max_val = torch.max(img)
+        scaled_img = (img - min_val) / (max_val - min_val)
+        return scaled_img
+
 
 def load_model() -> YOLO:
     """Loads and returns the eye model."""
@@ -39,13 +55,13 @@ def load_model() -> YOLO:
         )
     eye_model = YOLO(model_path)
 
-    print("Eye model loaded.")
+    logger.info("Eye model loaded.")
     return eye_model
 
 def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
     
-    model_path = Path(cnn_WeightPath[0]) / "eye_classifier_cnn.pt"
+    model_path = Path(cnn_WeightPath[0]) / "eye_clf_sm.pt"
     if not model_path.exists():
         logger.info("Eye classification model not found. Downloading...")
         download_file_with_progress(
@@ -59,7 +75,10 @@ def load_classifier_cnn() -> torch.nn.Module:
     model.to("cpu")
     return model
 
-def detect(faceImg : np.ndarray, eye_model : YOLO, confidence: float = 0.5) -> tuple:
+def detect(faceImg : np.ndarray, 
+           eye_model : YOLO, 
+           confidence: float = 0.5,
+           padding: int = 10) -> tuple:
     """Processes an image and tries to detect eyes. 
     
     Returns a 2-tuple:
@@ -81,6 +100,13 @@ def detect(faceImg : np.ndarray, eye_model : YOLO, confidence: float = 0.5) -> t
         # Class index of eyes is 0
         if detection[2] == 0:
             x_min, y_min, x_max, y_max = detection[0]
+
+            # padding:
+            x_min = max(0, x_min - padding)
+            y_min = max(0, y_min - padding)
+            x_max = min(faceImg.shape[1], x_max + padding)
+            y_max = min(faceImg.shape[0], y_max + padding)
+
             eye_regions.append(faceImg[int(y_min):int(y_max), int(x_min):int(x_max)])
             eye_xxyy.append((int(x_min), int(x_max), int(y_min), int(y_max)))
     return eye_regions, eye_xxyy
