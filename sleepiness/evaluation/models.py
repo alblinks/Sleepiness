@@ -14,8 +14,6 @@ from torch.utils.data import DataLoader
 
 # Import trained weight paths
 from sleepiness.end2end.weights import __path__ as e2eWeights
-from sleepiness.empty_seat.CNN.weights import __path__ as emptyWeightsCNN
-from sleepiness.empty_seat.FFNN.weights import __path__ as emptyWeightsFFNN
 
 # Import PassengerState
 from sleepiness.utility.pstate import (
