@@ -1,7 +1,7 @@
 from sleepiness.utility.logger import logger
 from sleepiness.utility.pstate import PassengerState, ReducedPassengerState
 
-__version__ = "1.0.1"
+__version__ = "1.0.0"
 __greeting__ = f"""
 ---------------Welcome to-------------------
  __ _                 _                     
