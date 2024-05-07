@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sleepiness"
-version = "0.0.1"
+version = "1.0.0"
 authors = [
   "Martin Waltz <martin.waltz@tu-dresden.de>",
   "Niklas Paulig <niklas.paulig@tu-dresden.de>"
@@ -32,6 +32,8 @@ torchvision='>=0.16'
 tqdm='>=4.64'
 ultralytics='>=8.0'
 
+[tool.poetry.scripts]
+sleepiness = "sleepiness.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]
