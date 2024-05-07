@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import torch
 import torchvision
@@ -5,17 +6,19 @@ from torch import nn, optim
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
+from sleepiness.eye.detection import MaxMinScaling
 
 from sleepiness.eye.CNN.weights import __path__ as customcnn_WeightPath
 from sleepiness.eye.CNN.model import CustomCNN
 
 # Data transformation
 transform = transforms.Compose([
-    transforms.Resize((20,50)),
+    transforms.Resize((30,60)),
+    transforms.ToTensor(),
+    MaxMinScaling(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
-    transforms.ToTensor(),
 ])
 
 # Data loading
@@ -73,7 +76,7 @@ for epoch in range(epochs):
 
             with torch.no_grad():
                 val_steps = 1
-                valbreak = len(val_loader)//3 # Only use 1/3 of the validation data for speed
+                valbreak = len(val_loader)//10 # Only use 1/10 of the validation data for speed
                 for inputs, labels in val_loader:
                     if val_steps == valbreak:
                         break
@@ -99,6 +102,7 @@ for epoch in range(epochs):
             plt.plot(step_count,tr_loss, label='Training loss', color='#283618')
             plt.plot(step_count,val_loss, label='Validation loss', color='#bc6c25')
             plt.plot(step_count,accuracies, label='Validation accuracy', color='#f0a500')
+            plt.grid(True)
             plt.xlabel('Steps')
             plt.ylabel('Loss')
             plt.legend()
@@ -114,3 +118,5 @@ for epoch in range(epochs):
             
     # Save the model
     torch.save(model, f'{customcnn_WeightPath[0]}/eye_epoch_{epoch+1}.pt')
+    if epoch == 30:
+        sys.exit()
