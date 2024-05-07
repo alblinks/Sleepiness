@@ -1,39 +1,70 @@
 # Sleepiness classification
-This repository provides functionality for detecting whether a person is awake or asleep. The core of the approach is the [yolov5](https://github.com/ultralytics/yolov5) network. To reproduce the results, consider the following steps.
+This repository provides functionality for detecting whether a person is awake or asleep.
 
-## 1. Generate training data
-Use the file ```generateTrainingData.py``` to take pictures of yourself (or possible others) using your local webcam. Make sure to specify the correct storage path; they should be saved in ```data/images```.
+The `sleepiness` package offers a robust command-line interface (CLI) for detecting signs of sleepiness from static images and real-time video feeds. The package can handle various operational modes, including real-time detection, single-image analysis, and continuous detection from a sequence of images or a folder with images. The CLI also supports custom bounding boxes for the hand detection model.
 
-After you created a sufficient amount of data, or imported them from some other source, it's time to label them. For this, you can use [labelImg](https://github.com/HumanSignal/labelImg) as follows:
-1. Create the folder ```data/labels``` if not already existent.
-2. Install [conda](https://docs.anaconda.com/) and create a virtual environment as follows. Make sure to use Python version 3.9; otherwise [labelImg](https://github.com/HumanSignal/labelImg) procudes issues.
+## Features
+
+- **Real-Time Detection**: Utilize your webcam to detect sleepiness in real time.
+- **Single Image Detection**: Analyze a single image for signs of sleepiness and terminate.
+- **Continuous Detection**: Continuously analyze a series of images from a specified directory, with prompts for new paths after each detection. Image folders are also supported.
+- **Customizable Model Parameters**: Set custom bounding boxes for detection models.
+
+## Installation
+
+To get started with `Sleepiness`, install the repository using the following command:
+
 ```bash
-$ conda create --name envp39 python=3.9
-$ conda activate envp39
-$ pip install labelImg
-$ labelImg
+pip install -e git+https://github.com/MarWaltz/Sleepiness.git
 ```
-3. Label each of the images in ```data/images``` manually and make sure to store them in the ```data/labels``` file.
 
-## 2. Fine-tune the pre-trained model
-Now we are fine-tuning the parameters of the model using the labeled data from the first step as follows:
-1. Clone the ```yolov5``` repo into this repo:
+or download the latest release from the [releases page](https://github.com/MarWaltz/Sleepiness/releases) and install it using the following command:
+
 ```bash
-$ git clone https://github.com/ultralytics/yolov5
+pip install path/to/sleepiness-<version-tag>.tar.gz
 ```
-2. Modify the ```dataset.yml``` in the ```yolov5``` folder to link correctly to your labels and images. Moreover, specify the desired classes correctly. For the binary case, we have either ```awake``` or ```sleepy```. 
-2. Run the following command from inside the ```yolov5``` directory, where you can adjust the parameters as desired:
+
+## Usage
+
+The CLI supports several options to specify the mode of operation:
+
+Usage:
+    `sleepiness [options] <command>`
+
+Options:
+
+    -h, --help            Show this screen and exit.
+    --version             Show version and exit.
+    -r                    Activate real-time sleepiness detection using webcam input.
+    -k <frames>           Specify the number of frames used for aggregation in real-time detection.
+    -p, --path <path>     Path to a single image for sleepiness detection. The process terminates after detection.
+    -c, --cpath <path>    Continuous, open-loop detection using image paths. Keeps all models 
+                          loaded and prompts for a new image path after each detection.
+    --hbbox <values>      Specify a bounding box for the hand detection model as xmin xmax ymin ymax. 
+                          Values must be within [0, 1] and correspond to the percentage of the image.
+
+## Examples
+
+1. Real-time detection using the webcam:
 ```bash
-$ python train.py --img 320 --batch 16 --epochs 300 --data dataset.yml --weights yolov5s.pt
+sleepiness -r
 ```
-3. You can find the results in the folder ```yolov5/runs```.
 
-## 3. Real-time detection
-Run ```realTimeDetection.py``` to see how it works! Make sure to change the path to the trained weights from the second step accordingly. The output should look like this:
+2. Single-image detection:
+```bash
+sleepiness -p path/to/image.jpg
+```
 
-![Example Image](https://github.com/MarWaltz/Sleepiness/blob/main/initial_tests/exampleOutput.jpg)
+3. Continuous detection using a sequence of images or a folder with images:
+```bash
+# Folder with images
+sleepiness -c [--cpath] path/to/folder/with/images
 
+# Single image (prompts for new path after detection)
+sleepiness -c [--cpath] path/to/image.jpg
+```
 
-
-
-
+4. Custom detection area for hand detection model:
+```bash
+sleepiness -r --hbbox 0.1 0.9 0.1 0.9
+```
