@@ -4,11 +4,11 @@ from torch import nn
 class CustomCNN(nn.Module):
     def __init__(self):
         super(CustomCNN, self).__init__()
-        self.conv1 = nn.Conv2d(3, 8, 3, padding=1)
+        self.conv1 = nn.Conv2d(1, 8, 3, padding=1)
         self.conv2 = nn.Conv2d(8, 16, 3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(16*7*15, 128)
-        self.fc3 = nn.Linear(128, 2)
+        self.fc1 = nn.Linear(16*7*15, 32)
+        self.fc3 = nn.Linear(32, 2)
         self.dropout = nn.Dropout(0.2)
         self.logsoftmax = nn.LogSoftmax(dim=1)
         
