@@ -183,43 +183,58 @@ class FullPipeline(Pipeline):
             # Open eyes have label 1
             labels.append(torch.argmax(logprobs).item())
         return labels
-
-    def transform_xxyy_for_cropped_img(self, 
-                                       full_img : np.ndarray, 
-                                       cropped_img : np.ndarray,
-                                       xxyy : tuple
-                                    )-> tuple[int,int,int,int]:
-        """Computes the bounding box coordinates (xxyy) for the full image for a given bounding box (xxyy) of a cropped img.
-        Cropping means keep only the middle 'keep_horizontal' percent of pixels of an image.
-        
-        Args:
-            full_img: Full size image.
-            xxyy: Bounding box coordinates in percentage for the cropped image.
-            keep_horizontal: Percentage of horizontal cropping.
-        Returns:
-            Bounding box coordinates for the full img.
+    
+    def transform_xxyy_for_cropped_area(self,
+                                        full_img: np.ndarray,
+                                        region_xxyy: tuple
+                                       ) -> tuple[int, int, int, int]:
         """
-        # Keep only 'keep_horizontal' percent of pixels of an image.
-        # This is to account for the fact that the hand detection model 
-        # used on cropped images
-        keep_horizontal = self.hand_model_crop[3] - self.hand_model_crop[2]
-        keep_vertical = self.hand_model_crop[1] - self.hand_model_crop[0]
-        
-        # Img size
-        full_height, full_width = full_img.shape[:2] 
-        cropped_height, cropped_width = cropped_img.shape[:2]
+        Computes the bounding box coordinates for the full image for a given bounding box of a region within a cropped area.
+        The cropped area's location and size are specified in percentage terms relative to the full image.
 
-        # Unpack the bounding box coordinates
-        px_min, px_max, py_min, py_max = xxyy
-        x_min = int(px_min * cropped_width)
-        x_max = int(px_max * cropped_width)
-        y_min = int(py_min * cropped_height)
-        y_max = int(py_max * cropped_height)
+        Args:
+            full_img: The original full-size image (np.ndarray).
+            cropped_img: The cropped subimage (np.ndarray).
+            cropped_xxyy: Tuple (x_min_pct, x_max_pct, y_min_pct, y_max_pct) describing the location and size
+                          of the cropped image within the full image in percentage.
+            region_xxyy: Tuple (x_min_pct, x_max_pct, y_min_pct, y_max_pct) describing the bounding box
+                         of the region within the cropped image in percentage.
         
-        # Calculate the horizontal and vertical offsets based on cropping percentages
-        x_off = full_width * (1 - keep_horizontal) / 2
-        y_off = full_height * (1 - keep_vertical) / 2
-        return (int(x_min + x_off), int(x_max + x_off), int(y_min + y_off), int(y_max + y_off))
+        Returns:
+            A tuple of bounding box coordinates (x_min, x_max, y_min, y_max) for the full image.
+        """
+        # Dimensions of the full image
+        full_height, full_width = full_img.shape[:2]
+
+        # Unpack the cropped image's location and size in percentage
+        crop_x_min_pct, crop_x_max_pct, crop_y_min_pct, crop_y_max_pct = self.hand_model_crop
+
+        # Calculate absolute pixel coordinates of the cropped area in the full image
+        crop_x_min = crop_x_min_pct * full_width
+        crop_x_max = crop_x_max_pct * full_width
+        crop_y_min = crop_y_min_pct * full_height
+        crop_y_max = crop_y_max_pct * full_height
+
+        # Calculate the dimensions of the cropped area
+        crop_width = crop_x_max - crop_x_min
+        crop_height = crop_y_max - crop_y_min
+
+        # Unpack the region bounding box within the cropped image in percentage
+        region_x_min_pct, region_x_max_pct, region_y_min_pct, region_y_max_pct = region_xxyy
+
+        # Calculate absolute pixel coordinates of the region within the cropped area
+        region_x_min = region_x_min_pct * crop_width
+        region_x_max = region_x_max_pct * crop_width
+        region_y_min = region_y_min_pct * crop_height
+        region_y_max = region_y_max_pct * crop_height
+
+        # Translate region coordinates back to the full image
+        x_min_full = crop_x_min + region_x_min
+        x_max_full = crop_x_min + region_x_max
+        y_min_full = crop_y_min + region_y_min
+        y_max_full = crop_y_min + region_y_max
+
+        return (int(x_min_full), int(x_max_full), int(y_min_full), int(y_max_full))
 
     def visualize(self, 
                   original_img : np.ndarray, 
@@ -249,8 +264,8 @@ class FullPipeline(Pipeline):
 
         # Draw bounding boxes for hands
         for hand_xxyy in hands_xxyy:
-            hand_xxyy = self.transform_xxyy_for_cropped_img(
-                full_img=original_img, cropped_img=crop_img, xxyy=hand_xxyy
+            hand_xxyy = self.transform_xxyy_for_cropped_area(
+                full_img=original_img , region_xxyy=hand_xxyy
             )
             cv2.rectangle(
                 img_with_boxes, 
