@@ -189,16 +189,17 @@ class FullPipeline(Pipeline):
                                         region_xxyy: tuple
                                        ) -> tuple[int, int, int, int]:
         """
-        Computes the bounding box coordinates for the full image for a given bounding box of a region within a cropped area.
-        The cropped area's location and size are specified in percentage terms relative to the full image.
+        Computes the bounding box coordinates for the full image for a given 
+        bounding box of a region within a cropped area.
+        The cropped area's location and size are specified in percentage 
+        terms relative to the full image.
 
         Args:
             full_img: The original full-size image (np.ndarray).
             cropped_img: The cropped subimage (np.ndarray).
-            cropped_xxyy: Tuple (x_min_pct, x_max_pct, y_min_pct, y_max_pct) describing the location and size
-                          of the cropped image within the full image in percentage.
-            region_xxyy: Tuple (x_min_pct, x_max_pct, y_min_pct, y_max_pct) describing the bounding box
-                         of the region within the cropped image in percentage.
+            region_xxyy: Tuple (x_min_pct, x_max_pct, y_min_pct, y_max_pct) 
+                         describing the bounding box of the region within 
+                         the cropped image in percentage.
         
         Returns:
             A tuple of bounding box coordinates (x_min, x_max, y_min, y_max) for the full image.
