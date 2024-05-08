@@ -13,12 +13,12 @@ from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
 from sleepiness.utility.logger import logger
 from sleepiness.utility.misc import download_file_with_progress
 
-CLP = """aHR0cHM6Ly93d3cuZHJvcGJ
-veC5jb20vc2NsL2ZpL2Q0cDN0cHkwODR
-0bXJxaTVmMzJ0cS9leWVfY2xmX3NtX2J
-3LnB0P3Jsa2V5PXlsM2dlZGM4aWI3MHN
-rb3hwa3VrNjFxc3omc3Q9bWx4Z3AwcHQ
-mZGw9MQ=="""
+CLP = """aHR0cHM6Ly93d3cuZHJ
+vcGJveC5jb20vc2NsL2ZpL3hndGR
+xamMxZ3hjeGRvZnk4cHEzdy9leWV
+fc21fYncucHQ/cmxrZXk9ZHRzb2Q
+wdWozdHlpYTQ2djFpNndubDU5bCZ
+zdD1qbnRtYmQydiZkbD0x"""
 
 DP = """aHR0cHM6Ly93d3cuZHJvcGJve
 C5jb20vc2NsL2ZpL3h4c29wbTE5cjdnO
@@ -76,7 +76,7 @@ def load_model() -> YOLO:
 def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
     
-    model_path = Path(cnn_WeightPath[0]) / "eye_clf_sm_bw.pt"
+    model_path = Path(cnn_WeightPath[0]) / "eye_sm_bw.pt"
     if not model_path.exists():
         logger.info("Eye classification model not found. Downloading...")
         download_file_with_progress(
