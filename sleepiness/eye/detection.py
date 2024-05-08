@@ -13,11 +13,12 @@ from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
 from sleepiness.utility.logger import logger
 from sleepiness.utility.misc import download_file_with_progress
 
-CLP = """aHR0cHM6Ly93d3cuZHJvcGJve
-C5jb20vc2NsL2ZpL3g0ZG05aGkzZzg2cDR
-iOHcycTB1by9leWVfY2xmX3NtLnB0P3Jsa
-2V5PWRzNTBraXVia2NvNHA4MXJ3ZWJ3ZDM
-zaXImc3Q9M2kxeWg0aTImZGw9MQ=="""
+CLP = """aHR0cHM6Ly93d3cuZHJ
+vcGJveC5jb20vc2NsL2ZpL3hndGR
+xamMxZ3hjeGRvZnk4cHEzdy9leWV
+fc21fYncucHQ/cmxrZXk9ZHRzb2Q
+wdWozdHlpYTQ2djFpNndubDU5bCZ
+zdD1qbnRtYmQydiZkbD0x"""
 
 DP = """aHR0cHM6Ly93d3cuZHJvcGJve
 C5jb20vc2NsL2ZpL3h4c29wbTE5cjdnO
@@ -42,6 +43,20 @@ class MaxMinScaling(torch.nn.Module):
         scaled_img = (img - min_val) / (max_val - min_val)
         return scaled_img
 
+# Custom transform for grey scaling
+class GreyScaling(torch.nn.Module):
+    def __init__(self):
+        super(GreyScaling, self).__init__()
+
+    def forward(self, img):
+        # Ensure the image is a tensor (this should always be the case in this setup)
+        if not torch.is_tensor(img):
+            raise ValueError("GreyScaling expects a tensor input")
+
+        # Perform grey scaling
+        img = torch.mean(img, dim=0, keepdim=True)
+        return img
+
 
 def load_model() -> YOLO:
     """Loads and returns the eye model."""
@@ -61,7 +76,7 @@ def load_model() -> YOLO:
 def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
     
-    model_path = Path(cnn_WeightPath[0]) / "eye_clf_sm.pt"
+    model_path = Path(cnn_WeightPath[0]) / "eye_sm_bw.pt"
     if not model_path.exists():
         logger.info("Eye classification model not found. Downloading...")
         download_file_with_progress(

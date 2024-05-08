@@ -6,7 +6,7 @@ from torch import nn, optim
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
-from sleepiness.eye.detection import MaxMinScaling
+from sleepiness.eye.detection import MaxMinScaling, GreyScaling
 
 from sleepiness.eye.CNN.weights import __path__ as customcnn_WeightPath
 from sleepiness.eye.CNN.model import CustomCNN
@@ -16,7 +16,7 @@ transform = transforms.Compose([
     transforms.Resize((30,60)),
     transforms.ToTensor(),
     MaxMinScaling(),
-    transforms.RandomHorizontalFlip(),
+    GreyScaling(),
     transforms.RandomVerticalFlip(),
     transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
 ])

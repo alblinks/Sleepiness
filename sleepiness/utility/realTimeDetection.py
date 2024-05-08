@@ -47,8 +47,8 @@ def framewise_real_time_detection(model: pipelines.FullPipeline, draw_bbox: bool
 
             # Draw bounding boxes for hands
             for hand_xxyy in hands_xxyy:
-                hand_xxyy = model.transform_xxyy_for_cropped_img(
-                    full_img=frame, cropped_img=cropped_img, xxyy=hand_xxyy
+                hand_xxyy = model.transform_xxyy_for_cropped_area(
+                    full_img=frame, region_xxyy=hand_xxyy
                 )
                 cv2.rectangle(
                     frame,
@@ -115,8 +115,8 @@ def aggregated_real_time_detection(model: pipelines.FullPipeline,
 
             # Draw bounding boxes for hands
             for hand_xxyy in hands_xxyy:
-                hand_xxyy = model.transform_xxyy_for_cropped_img(
-                    full_img=frame, cropped_img=cropped_img, xxyy=hand_xxyy
+                hand_xxyy = model.transform_xxyy_for_cropped_area(
+                    full_img=frame, region_xxyy=hand_xxyy
                 )
                 cv2.rectangle(
                     frame,
