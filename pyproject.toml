@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sleepiness"
-version = "1.0.0"
+version = "1.0.2"
 authors = [
   "Martin Waltz <martin.waltz@tu-dresden.de>",
   "Niklas Paulig <niklas.paulig@tu-dresden.de>"
