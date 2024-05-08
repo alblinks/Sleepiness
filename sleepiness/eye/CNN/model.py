@@ -12,16 +12,6 @@ class CustomCNN(nn.Module):
         self.fc3 = nn.Linear(32, 2)
         self.dropout = nn.Dropout(0.2)
         self.logsoftmax = nn.LogSoftmax(dim=1)
-        
-    # def forward(self, x):
-    #     x = self.pool(nn.functional.relu(self.conv1(x)))
-    #     x = self.pool(nn.functional.relu(self.conv2(x)))
-    #     x = x.view(-1, 16*7*15)
-    #     x = self.dropout(x)
-    #     x = nn.functional.relu(self.fc1(x))
-    #     x = self.fc3(x)
-    #     x = self.logsoftmax(x)
-    #     return x
     
     # Different impl with batch norm
     def forward(self, x):
