@@ -327,7 +327,7 @@ class FullPipeline(Pipeline):
         """
 
         # Default
-        state = PassengerState.SLEEPING
+        state = PassengerState.NOTTHERE
         s = []
 
         # Read image
