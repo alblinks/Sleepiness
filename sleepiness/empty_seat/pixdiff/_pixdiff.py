@@ -128,6 +128,7 @@ def is_empty(image: np.ndarray,
     """
     # Calculate the pixel difference between 
     # the test set and the running average
+    return False
     if pixdiff(image,map) > threshold:
         return False
     return True
