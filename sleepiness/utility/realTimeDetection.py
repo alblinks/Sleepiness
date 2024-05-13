@@ -3,6 +3,7 @@ import cv2
 import os
 import sleepiness.pipelines as pipelines
 from sleepiness.evaluation.aggregators import LabelAggregator, MajorityVoting
+from sleepiness import PassengerState
 
 
 def framewise_real_time_detection(model: pipelines.FullPipeline, draw_bbox: bool = False) -> None:
@@ -16,8 +17,6 @@ def framewise_real_time_detection(model: pipelines.FullPipeline, draw_bbox: bool
     else:
         cap = cv2.VideoCapture("/dev/video0")
     
-    crop_factors = model.hand_model_crop
-
     while cap.isOpened():
 
         # Read current frame
@@ -26,9 +25,8 @@ def framewise_real_time_detection(model: pipelines.FullPipeline, draw_bbox: bool
         # Make detections
         result, bboxes = model.classify(frame, return_bbox=True)
 
-        if draw_bbox:
+        if draw_bbox and result is not PassengerState.NOTTHERE:
             face_xxyy, eyes_xxyy, hands_xxyy = bboxes
-            cropped_img = pipelines.crop_image(frame, *crop_factors)
             # Draw face bounding box
             if face_xxyy is not None:
                 cv2.rectangle(
@@ -77,8 +75,6 @@ def aggregated_real_time_detection(model: pipelines.FullPipeline,
     """
     Real time classification for every frame from the camera.
     """
-    crop_factors = model.hand_model_crop
-
     # Access camera
     if os.name == 'nt':
         cap = cv2.VideoCapture(0)
@@ -94,9 +90,8 @@ def aggregated_real_time_detection(model: pipelines.FullPipeline,
         result, bboxes = model.classify(frame, return_bbox=True)
         aggregator.add(result)
         
-        if draw_bbox:
+        if draw_bbox and result is not PassengerState.NOTTHERE:
             face_xxyy, eyes_xxyy, hands_xxyy = bboxes
-            cropped_img = pipelines.crop_image(frame, *crop_factors)
             # Draw face bounding box
             if face_xxyy is not None:
                 cv2.rectangle(
