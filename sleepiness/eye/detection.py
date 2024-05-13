@@ -13,12 +13,11 @@ from sleepiness.eye.CNN.weights import __path__ as cnn_WeightPath
 from sleepiness.utility.logger import logger
 from sleepiness.utility.misc import download_file_with_progress
 
-CLP = """aHR0cHM6Ly93d3cuZHJ
-vcGJveC5jb20vc2NsL2ZpL3hndGR
-xamMxZ3hjeGRvZnk4cHEzdy9leWV
-fc21fYncucHQ/cmxrZXk9ZHRzb2Q
-wdWozdHlpYTQ2djFpNndubDU5bCZ
-zdD1qbnRtYmQydiZkbD0x"""
+CLP = """aHR0cHM6Ly93d3cuZHJvcGJve
+C5jb20vc2NsL2ZpL2phMDE4eWFvbXZncWd
+6cmwzZHlwMC9leWVfY2xmNy5wdD9ybGtle
+T1wZ2lmOGdlb2ExYWFudmNvOWZxeW1wNm1
+zJnN0PWs5bnF3cGJ0JmRsPTE="""
 
 DP = """aHR0cHM6Ly93d3cuZHJvcGJve
 C5jb20vc2NsL2ZpL3h4c29wbTE5cjdnO
@@ -76,7 +75,7 @@ def load_model() -> YOLO:
 def load_classifier_cnn() -> torch.nn.Module:
     """Loads and returns the CNN model for open-eye detection."""
     
-    model_path = Path(cnn_WeightPath[0]) / "eye_sm_bw.pt"
+    model_path = Path(cnn_WeightPath[0]) / "eye_clf7.pt"
     if not model_path.exists():
         logger.info("Eye classification model not found. Downloading...")
         download_file_with_progress(
@@ -92,8 +91,7 @@ def load_classifier_cnn() -> torch.nn.Module:
 
 def detect(faceImg : np.ndarray, 
            eye_model : YOLO, 
-           confidence: float = 0.5,
-           padding: int = 10) -> tuple:
+           confidence: float = 0.5) -> tuple:
     """Processes an image and tries to detect eyes. 
     
     Returns a 2-tuple:
@@ -101,6 +99,12 @@ def detect(faceImg : np.ndarray,
     If there are no eyes, the list will be empty."""
     # Rescale face image
     faceImg = maxmin_scaling(faceImg)
+    
+    # width and height of the face image
+    width, height = faceImg.shape[1], faceImg.shape[0]
+    
+    padding_width = 0.1 * width
+    padding_height = 0.075 * height
 
     # Inference
     result = eye_model(faceImg, agnostic_nms=True, verbose=False, conf=confidence)[0]
@@ -117,10 +121,10 @@ def detect(faceImg : np.ndarray,
             x_min, y_min, x_max, y_max = detection[0]
 
             # padding:
-            x_min = max(0, x_min - padding)
-            y_min = max(0, y_min - padding)
-            x_max = min(faceImg.shape[1], x_max + padding)
-            y_max = min(faceImg.shape[0], y_max + padding)
+            x_min = max(0, x_min - padding_width)
+            y_min = max(0, y_min - padding_height)
+            x_max = min(faceImg.shape[1], x_max + padding_width)
+            y_max = min(faceImg.shape[0], y_max + padding_height)
 
             eye_regions.append(faceImg[int(y_min):int(y_max), int(x_min):int(x_max)])
             eye_xxyy.append((int(x_min), int(x_max), int(y_min), int(y_max)))

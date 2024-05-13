@@ -11,21 +11,30 @@ from sleepiness.eye.detection import MaxMinScaling, GreyScaling
 from sleepiness.eye.CNN.weights import __path__ as customcnn_WeightPath
 from sleepiness.eye.CNN.model import CustomCNN
 
+TRANSPROP = 0.125
+
 # Data transformation
 transform = transforms.Compose([
     transforms.Resize((30,60)),
     transforms.ToTensor(),
     MaxMinScaling(),
     GreyScaling(),
-    transforms.RandomVerticalFlip(),
-    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+    #transforms.RandomPosterize(bits=4, p=TRANSPROP),
+    transforms.RandomVerticalFlip(p=0.5),
+    #transforms.Pad(2, fill=0, padding_mode='constant'),
+    #transforms.RandomPerspective(distortion_scale=0.2, p=TRANSPROP),
+    #transforms.RandomEqualize(p=TRANSPROP),
+    transforms.ColorJitter(brightness=0.7, contrast=0.0, saturation=0.0, hue=0.0),
+    #transforms.ToTensor(),
 ])
 
 # Data loading
-train_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_corrected_eyes/train", transform=transform)
+train_dataset = torchvision.datasets.ImageFolder(
+    root="pictures/balanced_corrected_eyes/train", transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-val_dataset = torchvision.datasets.ImageFolder(root="pictures/balanced_corrected_eyes/test", transform=transform)
+val_dataset = torchvision.datasets.ImageFolder(
+    root="pictures/balanced_corrected_eyes/test", transform=transform)
 val_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
 
 model = CustomCNN()
@@ -39,7 +48,7 @@ criterion = nn.NLLLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0005)
 
 # Train the model
-epochs = 500
+epochs = 50
 steps = 0
 running_loss = 0
 print_every = 100
