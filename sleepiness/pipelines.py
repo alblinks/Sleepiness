@@ -347,8 +347,11 @@ class FullPipeline(Pipeline):
             state = PassengerState.NOTTHERE
             if not viz:
                 return (state, [[],[],[]]) if return_bbox else state
-        if viz:
-            s.append("Seat is not empty.")
+            else:
+                s.append("Seat is empty.")
+        else:
+            if viz: 
+                s.append("Seat is not empty.")
 
         # 2. Step: If someone is there, detect face and select the one with largest bounding box
         face_detected, faceImg, face_xxyy = face.detect(
@@ -409,8 +412,10 @@ class FullPipeline(Pipeline):
             state = PassengerState.AWAKE
             if not viz:
                 return (state, [face_xxyy, eye_xxyy, hands_xxyy]) if return_bbox else state
-        elif viz:
-            s.append("No hands detected in cropped image.")
+        else:
+            state = PassengerState.SLEEPING
+            if viz:
+                s.append("No hands detected in cropped image.")
         
         # 5. Step: If none of the above situations appear, we assume the person sleeps
         if viz:
