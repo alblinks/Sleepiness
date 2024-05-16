@@ -18,6 +18,7 @@ Usage:
 Options:
     -h, --help            Show this screen and exit.
     --version             Show version and exit.
+    --calibrate           Calibrate the empty seat detection model.
     -r                    Activate real-time sleepiness detection using webcam input.
     -k <frames>           Specify the number of frames used for aggregation in real-time detection.
     -p, --path <path>     Path to a single image for sleepiness detection. The process terminates after detection.
