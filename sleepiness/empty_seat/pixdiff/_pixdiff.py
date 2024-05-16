@@ -42,7 +42,7 @@ def calibrate_from_device() -> None:
     cap.release()
     
     # Determine the threshold
-    threshold = np.percentile(np.abs(frames - AVGMAP).mean(axis=(1,2)), 98)
+    threshold = np.percentile(np.abs(frames - AVGMAP).mean(axis=(1,2)), 99)
     
     # Save the average map and the threshold
     emp = dict(threshold=threshold, avgmap=AVGMAP)
