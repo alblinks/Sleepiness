@@ -1,1 +1,1 @@
-from ._pixdiff import preprocess, is_empty
+from ._pixdiff import preprocess, is_empty, AVGMAP

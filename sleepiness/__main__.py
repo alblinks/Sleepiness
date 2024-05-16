@@ -63,6 +63,14 @@ class SleepinessCLI:
         self.parser = parser
         self.args = parser.parse_args()
         
+        if hasattr(self.args, "calibrate"):
+            if self.args.calibrate:
+                from sleepiness.empty_seat.pixdiff._pixdiff import calibrate_from_device
+                logger.info("Calibrating empty seat detection model...")
+                calibrate_from_device()
+                logger.info("Calibration complete. Exiting...")
+                sys.exit()
+        
         if hasattr(self.args, "path"):
             if self.args.path and self.args.cpath:
                 sys.exit(
@@ -204,6 +212,17 @@ def main() -> None:
         nargs=4,
         type=parse_bbox,
         default="0.25 0.75 0.0 0.8"
+    )
+
+    parser.add_argument(
+        "--calibrate", action="store_true", 
+        help=(
+            "Calibrate the empty seat detection model. Make sure that your camera is directed "
+            "towards the empty seat and that the seat is not obstructed. "
+            "The calibration process will take 200 images of the empty seat and calculate the "
+            "running average of the pixel difference. This average will be saved to a file "
+            "and can be used for the empty seat detection."
+        )
     )
 
     cli = SleepinessCLI(parser)

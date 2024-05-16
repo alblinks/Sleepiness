@@ -11,24 +11,25 @@ import torch
 import uuid
 
 from PIL import Image
+from pathlib import Path
 from abc import ABC, abstractmethod
 from sklearn.pipeline import Pipeline
 from torchvision.transforms import transforms
 
 import sleepiness.hand.detection as hand
 
-from sleepiness import PassengerState
+from sleepiness import PassengerState, logger
 
 import sleepiness.face as face
 import sleepiness.eye as eye
 import sleepiness.hand as hand
 from sleepiness.empty_seat.pixdiff import (
-    is_empty, preprocess as empty_preprocessor
+    is_empty, preprocess as empty_preprocessor,
+    __path__ as pixdiff_path
 )
-# Load the average pixel map
-from sleepiness.empty_seat.pixdiff import __path__ as pixdiff_path 
-with open(f"{pixdiff_path[0]}/avgmap.nparray", "rb") as f:
-    AVGMAP = pickle.load(f)
+
+# Empty seat classifier data
+emp_path = pixdiff_path[0] + "/avgmap.pkl"
     
 def crop_vertically(img: np.ndarray) -> np.ndarray:
     """
@@ -119,7 +120,7 @@ class FullPipeline(Pipeline):
     def __init__(self,
                  eye_model_confidence : float,
                  hand_model_confidence : float,
-                 hand_model_crop : list[float,float,float,float],):
+                 hand_model_crop : list[float,float,float,float]):
         
         """
         Args:
@@ -132,6 +133,19 @@ class FullPipeline(Pipeline):
         assert 0 <= hand_model_confidence <= 1, "Confidence must be between 0 and 1."
         assert len(hand_model_crop) == 4 and all([0 <= x <= 1 for x in hand_model_crop]),\
             "Bounding box must be in percentage."
+        
+        if not Path(emp_path).exists():
+            msg = (
+                "Empty seat detection is not calibrated. " 
+                "Re-calibrate the empty seat classifier via `sleepiness --calibrate`."
+            )
+            logger.error(msg)
+            raise ValueError(msg)
+        else:
+            with open(emp_path, 'rb') as f:
+                emp = pickle.load(f)
+                self.threshold = emp['threshold']
+                self.avgmap = emp['avgmap']
         
         self.hand_model_crop = hand_model_crop
         self.face_model = face.load_model()
@@ -343,7 +357,7 @@ class FullPipeline(Pipeline):
         else:
             proc_for_empty = empty_preprocessor(Image.fromarray(img))
 
-        if is_empty(proc_for_empty ,threshold= 0.08, map=AVGMAP):
+        if is_empty(proc_for_empty ,threshold= self.threshold, map=self.avgmap):
             state = PassengerState.NOTTHERE
             if not viz:
                 return (state, [[],[],[]]) if return_bbox else state

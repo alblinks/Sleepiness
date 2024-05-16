@@ -9,12 +9,15 @@ the average pixel values of the test set. If
 the difference is greater than a certain
 threshold, the seat is considered empty.
 """
+import pickle
 from pathlib import Path
 from typing import Generator
 import numpy as np
 from PIL import Image
+import cv2
 import matplotlib.pyplot as plt
-from itertools import pairwise
+from more_itertools import pairwise
+from . import __path__ as pixdiff_path
 
 from sleepiness.utility.misc import Loader
 
@@ -22,6 +25,30 @@ IMAGE_WIDTH = 100 // 2
 IMAGE_HEIGHT = 116 // 2
 
 AVGMAP = np.zeros((IMAGE_HEIGHT, IMAGE_WIDTH))
+
+def calibrate_from_device() -> None:
+    """
+    Captures 200 frames from the camera
+    and calculates the average pixel map and saves it
+    """
+    cap = cv2.VideoCapture(0)
+    frames = []
+    for count in range(200):
+        print(f"Calibrating {count}/200", end='\r')
+        ret, frame = cap.read()
+        preprocessed = preprocess(Image.fromarray(frame))
+        running_average(preprocessed, count)
+        frames.append(preprocessed)
+    cap.release()
+    
+    # Determine the threshold
+    threshold = np.percentile(np.abs(frames - AVGMAP).mean(axis=(1,2)), 95)
+    
+    # Save the average map and the threshold
+    emp = dict(threshold=threshold, avgmap=AVGMAP)
+    with open(f'{pixdiff_path[0]}/avgmap.pkl', 'wb') as f:
+        pickle.dump(emp, f)
+    return threshold
 
 def crop_bottom(image: Image.Image, percent: float) -> Image.Image:
     """
@@ -128,7 +155,6 @@ def is_empty(image: np.ndarray,
     """
     # Calculate the pixel difference between 
     # the test set and the running average
-    return False
     if pixdiff(image,map) > threshold:
         return False
     return True
@@ -152,27 +178,3 @@ def plot_distribution(distr: np.ndarray,
     plt.ylabel("Frequency")
     plt.savefig(f"pixdiff_distribution_{title}.png", dpi=300)
     plt.close()
-
-if __name__ == "__main__":
-    # Define the paths
-    train_path = Path("pictures/empty_seat_dataset/train/not there")
-    #test_path = Path("pictures/empty_seat_dataset/test/awake")
-    
-    populate_avg_map(train_path)
-    save_avg_map()
-    plt.imshow(AVGMAP, cmap='gray')
-    plt.savefig("average_empty.png", dpi=300)
-    plt.close()
-    
-    distr_awake = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/awake"))
-    plot_distribution(distr_awake, "awake")
-    
-    distr_nt = pixdiff_distribution(Path("pictures/empty_seat_dataset/train/not there"))
-    plot_distribution(distr_nt, "not there")
-    
-    # Plot the pairwise pixel difference distribution inside both training sets
-    pw_dist = paiwise_pixdiff_distribution(Path("pictures/empty_seat_dataset/train/awake"))
-    plot_distribution(pw_dist, "awake_pairwise")
-    
-    pw_dist = paiwise_pixdiff_distribution(Path("pictures/empty_seat_dataset/train/not there"))
-    plot_distribution(pw_dist, "not there_pairwise")
