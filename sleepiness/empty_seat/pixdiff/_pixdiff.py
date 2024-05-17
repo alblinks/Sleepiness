@@ -16,7 +16,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
-from more_itertools import pairwise
+from itertools import pairwise
 from . import __path__ as pixdiff_path
 
 from sleepiness.utility.misc import Loader
