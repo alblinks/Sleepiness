@@ -120,7 +120,8 @@ class FullPipeline(Pipeline):
     def __init__(self,
                  eye_model_confidence : float,
                  hand_model_confidence : float,
-                 hand_model_crop : list[float,float,float,float]):
+                 hand_model_crop : list[float,float,float,float],
+                 empty_seat_model_path : str = None):
         
         """
         Args:
@@ -133,20 +134,8 @@ class FullPipeline(Pipeline):
         assert 0 <= hand_model_confidence <= 1, "Confidence must be between 0 and 1."
         assert len(hand_model_crop) == 4 and all([0 <= x <= 1 for x in hand_model_crop]),\
             "Bounding box must be in percentage."
-        
-        if not Path(emp_path).exists():
-            msg = (
-                "Empty seat detection is not calibrated. " 
-                "Re-calibrate the empty seat classifier via `sleepiness --calibrate`."
-            )
-            logger.error(msg)
-            raise ValueError(msg)
-        else:
-            with open(emp_path, 'rb') as f:
-                emp = pickle.load(f)
-                self.threshold = emp['threshold']
-                self.avgmap = emp['avgmap']
-        
+
+        self.threshold, self.avgmap = self._setup_empty_seat(empty_seat_model_path)
         self.hand_model_crop = hand_model_crop
         self.face_model = face.load_model()
         self.eye_model = eye.load_model()
@@ -154,6 +143,27 @@ class FullPipeline(Pipeline):
         self.hand_model = hand.load_model(hand_model_confidence)
         
         self.eye_model_confidence = eye_model_confidence
+
+    def _setup_empty_seat(self, empty_seat_model_path : str) -> tuple:
+        """
+        Sets up the empty seat classifier.
+
+        Returns:
+            dict: The empty seat classifier threshold and average bitmap.
+        """
+        if not empty_seat_model_path:
+            if not Path(emp_path).exists():
+                msg = (
+                    "Empty seat detection is not calibrated. " 
+                    "Re-calibrate the empty seat classifier via `sleepiness --calibrate`."
+                )
+                logger.error(msg)
+                raise ValueError(msg)
+            else:
+                empty_seat_model_path = emp_path  # Use model from default location
+        with open(empty_seat_model_path, 'rb') as f:
+            emp = pickle.load(f)
+            return emp['threshold'], emp['avgmap']
 
     def open_eye_clustering(self, eye_regions : list, clustering_model : Pipeline) -> bool:
         """Classifies a list of eye regions (np.ndarrays) as open- or closed-eye 
